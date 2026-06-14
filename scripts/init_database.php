@@ -27,33 +27,21 @@ if (!$ifEmpty && !$confirmed) {
 require_once __DIR__ . '/../includes/db.php';
 
 $conn = db();
-$existing = mysqli_query($conn, "SHOW TABLES LIKE 'faculty'");
-if ($existing === false) {
-    throw new RuntimeException('Unable to inspect the target database.');
+
+function table_exists(mysqli $conn, string $table): bool
+{
+    $escaped = mysqli_real_escape_string($conn, $table);
+    $result = mysqli_query($conn, "SHOW TABLES LIKE '$escaped'");
+    if ($result === false) {
+        throw new RuntimeException("Unable to inspect table: $table");
+    }
+    $exists = mysqli_num_rows($result) > 0;
+    mysqli_free_result($result);
+    return $exists;
 }
 
-if (mysqli_num_rows($existing) > 0) {
-    mysqli_free_result($existing);
-    echo "Database already contains application tables; initialization skipped.\n";
-    exit(0);
-}
-mysqli_free_result($existing);
-
-$files = [
-    __DIR__ . '/../sql/schema.sql',
-    __DIR__ . '/../sql/seed.ready.sql',
-    __DIR__ . '/../sql/migration-v2.sql',
-    __DIR__ . '/../sql/migration-v5.sql',
-    __DIR__ . '/../sql/migration-v6-docs.sql',
-    __DIR__ . '/../sql/migration-v8-fix-document-names.sql',
-    __DIR__ . '/../sql/migration-v9-final-teams.sql',
-    __DIR__ . '/../sql/migration-v10-student-mother-name.sql',
-    __DIR__ . '/../sql/migration-v11-student-roll-no.sql',
-    __DIR__ . '/../sql/migration-v12-transfer-pharmacy.sql',
-    __DIR__ . '/../sql/migration-v13-jersey.sql',
-];
-
-foreach ($files as $file) {
+function apply_sql_file(mysqli $conn, string $file): void
+{
     $sql = file_get_contents($file);
     if ($sql === false) {
         throw new RuntimeException('Unable to read ' . basename($file));
@@ -90,6 +78,44 @@ foreach ($files as $file) {
     } while (true);
 
     echo 'Applied ' . basename($file) . "\n";
+}
+
+$existing = mysqli_query($conn, "SHOW TABLES LIKE 'faculty'");
+if ($existing === false) {
+    throw new RuntimeException('Unable to inspect the target database.');
+}
+
+if (mysqli_num_rows($existing) > 0) {
+    mysqli_free_result($existing);
+
+    if (!table_exists($conn, 'final_teams')) {
+        apply_sql_file($conn, __DIR__ . '/../sql/migration-v9-final-teams.sql');
+    }
+    if (!table_exists($conn, 'jersey_forms') || !table_exists($conn, 'jersey_requests')) {
+        apply_sql_file($conn, __DIR__ . '/../sql/migration-v13-jersey.sql');
+    }
+
+    echo "Existing database checked; required feature tables are ready.\n";
+    exit(0);
+}
+mysqli_free_result($existing);
+
+$files = [
+    __DIR__ . '/../sql/schema.sql',
+    __DIR__ . '/../sql/seed.ready.sql',
+    __DIR__ . '/../sql/migration-v2.sql',
+    __DIR__ . '/../sql/migration-v5.sql',
+    __DIR__ . '/../sql/migration-v6-docs.sql',
+    __DIR__ . '/../sql/migration-v8-fix-document-names.sql',
+    __DIR__ . '/../sql/migration-v9-final-teams.sql',
+    __DIR__ . '/../sql/migration-v10-student-mother-name.sql',
+    __DIR__ . '/../sql/migration-v11-student-roll-no.sql',
+    __DIR__ . '/../sql/migration-v12-transfer-pharmacy.sql',
+    __DIR__ . '/../sql/migration-v13-jersey.sql',
+];
+
+foreach ($files as $file) {
+    apply_sql_file($conn, $file);
 }
 
 echo "Database initialization completed.\n";
