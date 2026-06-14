@@ -50,17 +50,13 @@ VALUES
 --     (The v3 + v4 migrations also add these for existing installs.
 --      This block keeps a fresh install self-contained.)
 -- ---------------------------------------------------------------------
-INSERT INTO `faculty_departments` (`faculty_id`,`department_id`) VALUES
-    (2, 1),   -- eng_faculty    -> engineering
-    (2, 3),   -- eng_faculty    -> pharmacy
-    (3, 2),   -- poly_faculty   -> polytechnic
-    (3, 9),   -- poly_faculty   -> dpharm (id=9)
-    (4, 4),   -- pharm_faculty  -> mba
-    (4, 5),   -- pharm_faculty  -> mca
-    (4, 6),   -- pharm_faculty  -> bba
-    (4, 7),   -- pharm_faculty  -> bca
-    (4, 8),   -- pharm_faculty  -> architecture
-    (5, 9);   -- dpharm_faculty -> dpharm (id=9)
+INSERT INTO `faculty_departments` (`faculty_id`,`department_id`)
+SELECT f.id, d.id
+  FROM `faculty` f
+  JOIN `departments` d
+    ON (f.username = 'eng_faculty'   AND d.code IN ('engineering', 'pharmacy'))
+    OR (f.username = 'poly_faculty'  AND d.code IN ('polytechnic', 'dpharm'))
+    OR (f.username = 'pharm_faculty' AND d.code IN ('mba', 'mca', 'bba', 'bca', 'architecture'));
 
 -- ---------------------------------------------------------------------
 -- 4. sample students

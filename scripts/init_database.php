@@ -94,6 +94,7 @@ if (mysqli_num_rows($existing) > 0) {
     if (!table_exists($conn, 'jersey_forms') || !table_exists($conn, 'jersey_requests')) {
         apply_sql_file($conn, __DIR__ . '/../sql/migration-v13-jersey.sql');
     }
+    apply_sql_file($conn, __DIR__ . '/../sql/migration-v14-fix-faculty-departments.sql');
 
     echo "Existing database checked; required feature tables are ready.\n";
     exit(0);
@@ -112,6 +113,7 @@ $files = [
     __DIR__ . '/../sql/migration-v11-student-roll-no.sql',
     __DIR__ . '/../sql/migration-v12-transfer-pharmacy.sql',
     __DIR__ . '/../sql/migration-v13-jersey.sql',
+    __DIR__ . '/../sql/migration-v14-fix-faculty-departments.sql',
 ];
 
 foreach ($files as $file) {
