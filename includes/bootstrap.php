@@ -16,11 +16,14 @@ require_once __DIR__ . '/db.php';
 // resets, and any other outbound URLs. NEVER use $_SERVER['HTTP_HOST'] for
 // this — attackers can poison the Host header to redirect victims.
 if (!defined('SITE_URL')) {
-    // Override via Apache/Nginx env var SITE_URL, or edit this default.
+    // Railway provides RAILWAY_PUBLIC_DOMAIN after public networking is enabled.
     $env = getenv('SITE_URL');
+    $railway_domain = getenv('RAILWAY_PUBLIC_DOMAIN');
     define('SITE_URL', $env !== false && $env !== ''
         ? rtrim($env, '/')
-        : 'http://localhost/college-sports-faculty');
+        : ($railway_domain !== false && $railway_domain !== ''
+            ? 'https://' . rtrim($railway_domain, '/')
+            : 'http://localhost/college-sports-faculty'));
 }
 
 /* ---------------- error reporting ---------------- */

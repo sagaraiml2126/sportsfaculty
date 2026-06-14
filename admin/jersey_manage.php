@@ -47,7 +47,10 @@ $is_open = $form ? (int)$form['is_open'] : 0;
 // Build the public URL
 $public_url = '';
 if ($form) {
-    $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+    $forwarded_proto = strtolower(trim(explode(',', $_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')[0]));
+    $scheme = ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || $forwarded_proto === 'https')
+        ? 'https'
+        : 'http';
     $host   = $_SERVER['HTTP_HOST'] ?? 'localhost';
     // Detect base path
     $script = str_replace('\\', '/', $_SERVER['SCRIPT_NAME'] ?? '');

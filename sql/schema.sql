@@ -52,6 +52,20 @@ CREATE TABLE `faculty` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ---------------------------------------------------------------------
+-- 2b. faculty_departments (many-to-many faculty access)
+-- ---------------------------------------------------------------------
+DROP TABLE IF EXISTS `faculty_departments`;
+CREATE TABLE `faculty_departments` (
+    `faculty_id`    INT UNSIGNED     NOT NULL,
+    `department_id` TINYINT UNSIGNED NOT NULL,
+    PRIMARY KEY (`faculty_id`, `department_id`),
+    CONSTRAINT `fk_fd_faculty`
+        FOREIGN KEY (`faculty_id`) REFERENCES `faculty`(`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_fd_department`
+        FOREIGN KEY (`department_id`) REFERENCES `departments`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------------------------------------------------------------
 -- 3. students
 -- ---------------------------------------------------------------------
 DROP TABLE IF EXISTS `students`;

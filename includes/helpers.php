@@ -74,7 +74,10 @@ function redirect(string $path): never
     $path = '/' . implode('/', $parts);
 
     // Build full absolute URL
-    $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+    $forwarded_proto = strtolower(trim(explode(',', $_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')[0]));
+    $scheme = ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || $forwarded_proto === 'https')
+        ? 'https'
+        : 'http';
     $host   = $_SERVER['HTTP_HOST'] ?? $_SERVER['SERVER_NAME'] ?? 'localhost';
     header('Location: ' . $scheme . '://' . $host . $path);
     exit;
