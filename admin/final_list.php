@@ -442,13 +442,7 @@ $flash_err = flash_get('final_error');
                                         <div class="info">
                                             <div class="name"><?= h($r['full_name']) ?></div>
                                             <div class="meta">
-                                                <form method="post" action="final_update_roll.php" style="display:inline-flex; align-items:center; gap:.2rem">
-                                                    <?= csrf_field() ?>
-                                                    <input type="hidden" name="entry_id" value="<?= (int)$r['entry_id'] ?>">
-                                                    <input type="text" name="roll_no" class="roll-input" value="<?= h($r['roll_no']) ?>">
-                                                    <button type="submit" class="btn btn-secondary" style="padding:.1rem .4rem; font-size:.7rem">Save</button>
-                                                </form>
-                                                <?php if ($r['sport_1']): ?> · <span class="sport-tag"><?= h($r['sport_1']) ?></span><?php endif; ?>
+                                                <?php if ($r['sport_1']): ?><span class="sport-tag"><?= h($r['sport_1']) ?></span><?php endif; ?>
                                                 <?php if ($r['sport_2']): ?><span class="sport-tag"><?= h($r['sport_2']) ?></span><?php endif; ?>
                                             </div>
                                         </div>
