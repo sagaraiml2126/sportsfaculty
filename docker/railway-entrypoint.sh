@@ -3,6 +3,10 @@ set -eu
 
 port="${PORT:-8080}"
 
+# mod_php requires prefork. Ensure no other Apache MPM remains enabled.
+a2dismod -f mpm_event mpm_worker >/dev/null 2>&1 || true
+a2enmod mpm_prefork >/dev/null 2>&1
+
 sed -ri "s/^Listen [0-9]+$/Listen ${port}/" /etc/apache2/ports.conf
 sed -ri "s/<VirtualHost \\*:[0-9]+>/<VirtualHost *:${port}>/" /etc/apache2/sites-available/000-default.conf
 

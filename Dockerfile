@@ -3,6 +3,8 @@ FROM php:8.2-apache
 RUN apt-get update \
     && apt-get install -y --no-install-recommends libonig-dev libzip-dev \
     && docker-php-ext-install mysqli mbstring zip \
+    && a2dismod -f mpm_event mpm_worker \
+    && a2enmod mpm_prefork \
     && a2enmod headers rewrite \
     && sed -ri 's/AllowOverride None/AllowOverride All/g' /etc/apache2/apache2.conf \
     && rm -rf /var/lib/apt/lists/*
