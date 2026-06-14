@@ -12,6 +12,7 @@ RUN apt-get update \
 WORKDIR /var/www/html
 COPY . /var/www/html
 COPY docker/railway-entrypoint.sh /usr/local/bin/railway-entrypoint
+COPY docker/php-production.ini /usr/local/etc/php/conf.d/zz-production.ini
 
 RUN chmod +x /usr/local/bin/railway-entrypoint \
     && mkdir -p /opt/upload-protection \

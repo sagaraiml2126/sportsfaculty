@@ -64,9 +64,11 @@ if (!empty($_FILES['image']) && ($_FILES['image']['error'] ?? UPLOAD_ERR_NO_FILE
     $up = handle_image_upload('achievements', $_FILES['image'], 5000);
     if (!$up['ok']) {
         $reason = $up['error'] === 'too_large'      ? 'Image is larger than 5 MB.'
+                : ($up['error'] === 'upload_error_' . UPLOAD_ERR_INI_SIZE
+                    ? 'The server rejected the image because it exceeds the upload limit.'
                 : ($up['error'] === 'bad_extension' ? 'Only JPG, PNG, or WebP images are allowed.'
                 : ($up['error'] === 'not_an_image'   ? 'File is not a valid image.'
-                : ('Upload failed (' . h($up['error']) . ').')));
+                : ('Upload failed (' . h($up['error']) . ').'))));
         flash_set('ach_error', $reason, 'error');
         redirect($back);
     }
