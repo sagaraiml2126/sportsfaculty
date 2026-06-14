@@ -16,14 +16,10 @@ require_once __DIR__ . '/db.php';
 // resets, and any other outbound URLs. NEVER use $_SERVER['HTTP_HOST'] for
 // this — attackers can poison the Host header to redirect victims.
 if (!defined('SITE_URL')) {
-    // Railway provides RAILWAY_PUBLIC_DOMAIN after public networking is enabled.
     $env = getenv('SITE_URL');
-    $railway_domain = getenv('RAILWAY_PUBLIC_DOMAIN');
     define('SITE_URL', $env !== false && $env !== ''
         ? rtrim($env, '/')
-        : ($railway_domain !== false && $railway_domain !== ''
-            ? 'https://' . rtrim($railway_domain, '/')
-            : 'http://localhost/college-sports-faculty'));
+        : 'http://localhost/college-sports-faculty');
 }
 
 /* ---------------- error reporting ---------------- */
@@ -63,6 +59,46 @@ require_once __DIR__ . '/helpers.php';
 require_once __DIR__ . '/csrf.php';
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/upload.php';
+
+/* ---------------- safe exception handling ---------------- */
+
+set_exception_handler(static function (Throwable $e): void {
+    $errorId = bin2hex(random_bytes(4));
+    error_log(sprintf(
+        '[app:%s] %s in %s:%d%s%s',
+        $errorId,
+        $e->getMessage(),
+        $e->getFile(),
+        $e->getLine(),
+        PHP_EOL,
+        $e->getTraceAsString()
+    ));
+
+    if (!headers_sent()) {
+        http_response_code(500);
+        header('Cache-Control: no-store');
+    }
+
+    $message = APP_ENV === 'local'
+        ? $e->getMessage()
+        : "Something went wrong. Reference: {$errorId}";
+    $isJson = str_contains($_SERVER['HTTP_ACCEPT'] ?? '', 'application/json')
+        || str_contains(str_replace('\\', '/', $_SERVER['SCRIPT_NAME'] ?? ''), '/api/');
+
+    if ($isJson) {
+        if (!headers_sent()) {
+            header('Content-Type: application/json; charset=utf-8');
+        }
+        echo json_encode(['ok' => false, 'error' => $message], JSON_UNESCAPED_SLASHES);
+        return;
+    }
+
+    echo '<!doctype html><html lang="en"><meta charset="utf-8">'
+       . '<meta name="viewport" content="width=device-width,initial-scale=1">'
+       . '<title>Application Error</title><body style="font-family:system-ui;padding:2rem">'
+       . '<h1>Unable to complete this request</h1><p>' . h($message) . '</p>'
+       . '<p><a href="' . h(url('index.php')) . '">Return to the website</a></p></body></html>';
+});
 
 /* ---------------- security headers ---------------- */
 

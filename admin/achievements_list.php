@@ -22,10 +22,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($do === 'delete' && $id > 0) {
         $existing = db_one('SELECT id, image_path FROM achievements WHERE id = ?', [$id], 'i');
         if ($existing) {
-            if (!empty($existing['image_path'])) {
-                $abs = __DIR__ . '/../' . ltrim($existing['image_path'], '/');
-                if (is_file($abs)) @unlink($abs);
-            }
+            delete_uploaded_file($existing['image_path'] ?? null, 'achievements');
             db_execute('DELETE FROM achievements WHERE id = ?', [$id], 'i');
             flash_set('ach_saved', 'Achievement deleted.', 'success');
         } else {
@@ -167,6 +164,7 @@ if ($q !== '') {
                 <div class="sidebar-nav-label">Site Content</div>
                 <a href="notices_list.php"><i class="bi bi-megaphone"></i> <span>Notices</span></a>
                 <a href="achievements_list.php" class="active"><i class="bi bi-trophy"></i> <span>Achievements</span></a>
+                <a href="contact_messages.php"><i class="bi bi-envelope"></i> <span>Contact Messages</span></a>
                 <?php if ($me['role'] === 'SUPER_ADMIN'): ?>
                     <div class="sidebar-nav-label">Admin</div>
                     <a href="faculty_manage.php"><i class="bi bi-people-fill"></i> <span>Faculty Management</span></a>

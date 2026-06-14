@@ -6,19 +6,22 @@
 
 CREATE TABLE IF NOT EXISTS `jersey_forms` (
     `id`              INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `department_id`   TINYINT UNSIGNED NOT NULL,
     `game_name`       VARCHAR(80)  NOT NULL,
     `event_label`     VARCHAR(120) NOT NULL,
-    `academic_year`   VARCHAR(10)  NULL,
+    `academic_year`   VARCHAR(10)  NOT NULL DEFAULT '',
     `is_open`         TINYINT(1)   NOT NULL DEFAULT 0,
     `access_token`    VARCHAR(64)  NOT NULL,
     `created_by`      INT UNSIGNED NULL,
     `created_at`      TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at`      TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
-    UNIQUE KEY `uq_jersey_form_team` (`game_name`, `event_label`, `academic_year`),
+    UNIQUE KEY `uq_jersey_form_team` (`department_id`, `game_name`, `event_label`, `academic_year`),
     UNIQUE KEY `uq_jersey_token` (`access_token`),
     CONSTRAINT `fk_jersey_form_faculty` FOREIGN KEY (`created_by`)
-        REFERENCES `faculty`(`id`) ON UPDATE CASCADE ON DELETE SET NULL
+        REFERENCES `faculty`(`id`) ON UPDATE CASCADE ON DELETE SET NULL,
+    CONSTRAINT `fk_jersey_form_department` FOREIGN KEY (`department_id`)
+        REFERENCES `departments`(`id`) ON UPDATE CASCADE ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `jersey_requests` (

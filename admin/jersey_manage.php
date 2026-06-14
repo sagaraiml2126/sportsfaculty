@@ -24,13 +24,30 @@ if ($me === null) { redirect('../faculty-login.php'); exit; }
 $game  = trim((string)($_GET['game'] ?? ''));
 $event = trim((string)($_GET['event'] ?? ''));
 $ay    = trim((string)($_GET['ay'] ?? ''));
+$dept_id = (int)($_GET['dept'] ?? (effective_department_id() ?? 0));
 
-if ($game === '' || $event === '') {
+if ($game === '' || $event === '' || $dept_id <= 0) {
     flash_set('final_error', 'Game and event are required to manage jerseys.', 'error');
     redirect('final_list.php');
 }
+assert_department_access($dept_id);
 
-$ay_val = $ay === '' ? null : $ay;
+$team_exists = db_one(
+    "SELECT ft.id
+       FROM final_teams ft
+       JOIN students s ON s.id = ft.student_id
+      WHERE ft.game_name = ? AND ft.event_label = ?
+        AND COALESCE(ft.academic_year, '') = ?
+        AND s.department_id = ?",
+    [$game, $event, $ay, $dept_id],
+    'sssi'
+);
+if (!$team_exists) {
+    http_response_code(404);
+    exit('Final team not found.');
+}
+
+$ay_val = $ay;
 
 /* ------------------------------------------------------------------ */
 /*  Load jersey form row (may not exist yet)                          */
@@ -38,8 +55,8 @@ $ay_val = $ay === '' ? null : $ay;
 
 $form = db_one(
     "SELECT * FROM jersey_forms
-      WHERE game_name = ? AND event_label = ? AND academic_year <=> ?",
-    [$game, $event, $ay_val], 'sss'
+      WHERE department_id = ? AND game_name = ? AND event_label = ? AND academic_year = ?",
+    [$dept_id, $game, $event, $ay_val], 'isss'
 );
 
 $is_open = $form ? (int)$form['is_open'] : 0;
@@ -47,16 +64,7 @@ $is_open = $form ? (int)$form['is_open'] : 0;
 // Build the public URL
 $public_url = '';
 if ($form) {
-    $forwarded_proto = strtolower(trim(explode(',', $_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')[0]));
-    $scheme = ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || $forwarded_proto === 'https')
-        ? 'https'
-        : 'http';
-    $host   = $_SERVER['HTTP_HOST'] ?? 'localhost';
-    // Detect base path
-    $script = str_replace('\\', '/', $_SERVER['SCRIPT_NAME'] ?? '');
-    $base   = dirname(dirname($script)); // go up from /admin/jersey_manage.php
-    if ($base === '/' || $base === '\\') $base = '';
-    $public_url = $scheme . '://' . $host . $base . '/jersey-form.php?token=' . urlencode($form['access_token']);
+    $public_url = SITE_URL . '/jersey-form.php?token=' . urlencode($form['access_token']);
 }
 
 /* ------------------------------------------------------------------ */
@@ -73,8 +81,9 @@ if ($form) {
            JOIN students s ON s.id = jr.student_id
            JOIN departments d ON d.id = s.department_id
           WHERE jr.jersey_form_id = ?
+            AND s.department_id = ?
           ORDER BY jr.created_at ASC",
-        [(int)$form['id']], 'i'
+        [(int)$form['id'], $dept_id], 'ii'
     );
     $stats['total'] = count($requests);
     foreach ($requests as $r) {
@@ -87,15 +96,15 @@ if ($form) {
 /*  Final team player count (for context)                             */
 /* ------------------------------------------------------------------ */
 
-[$scope, $sp, $st] = scope_sql_department('s');
 $team_count = (int)(db_one(
     "SELECT COUNT(*) AS n FROM final_teams ft
        JOIN students s ON s.id = ft.student_id
-      WHERE ft.game_name = ? AND ft.event_label = ? AND ft.academic_year <=> ? $scope",
-    array_merge([$game, $event, $ay_val], $sp), 'sss' . $st
+      WHERE ft.game_name = ? AND ft.event_label = ?
+        AND COALESCE(ft.academic_year, '') = ? AND s.department_id = ?",
+    [$game, $event, $ay_val, $dept_id], 'sssi'
 )['n'] ?? 0);
 
-$list_query = http_build_query(array_filter(['game' => $game, 'event' => $event, 'ay' => $ay]));
+$list_query = http_build_query(['game' => $game, 'event' => $event, 'ay' => $ay, 'dept' => $dept_id]);
 
 $flash_ok  = flash_get('jersey_ok');
 $flash_err = flash_get('jersey_error');
@@ -251,6 +260,7 @@ $flash_err = flash_get('jersey_error');
                     <div class="sidebar-nav-label">Site Content</div>
                     <a href="notices_list.php"><i class="bi bi-megaphone"></i> <span>Notices</span></a>
                     <a href="achievements_list.php"><i class="bi bi-trophy"></i> <span>Achievements</span></a>
+                    <a href="contact_messages.php"><i class="bi bi-envelope"></i> <span>Contact Messages</span></a>
                 <?php endif; ?>
                 <?php if ($me['role'] === 'SUPER_ADMIN'): ?>
                     <div class="sidebar-nav-label">Admin</div>
@@ -312,6 +322,7 @@ $flash_err = flash_get('jersey_error');
                                 <input type="hidden" name="game" value="<?= h($game) ?>">
                                 <input type="hidden" name="event" value="<?= h($event) ?>">
                                 <input type="hidden" name="ay" value="<?= h($ay) ?>">
+                                <input type="hidden" name="dept" value="<?= $dept_id ?>">
                                 <button type="submit" class="btn <?= $is_open ? 'btn-outline-danger' : 'btn-success' ?> btn-sm">
                                     <i class="bi bi-<?= $is_open ? 'x-circle' : 'check-circle' ?>"></i>
                                     <?= $is_open ? 'Close Form' : 'Open Form' ?>
@@ -452,6 +463,7 @@ $flash_err = flash_get('jersey_error');
                                                         <input type="hidden" name="game" value="<?= h($game) ?>">
                                                         <input type="hidden" name="event" value="<?= h($event) ?>">
                                                         <input type="hidden" name="ay" value="<?= h($ay) ?>">
+                                                        <input type="hidden" name="dept" value="<?= $dept_id ?>">
                                                         <button type="submit" class="btn btn-success btn-sm"><i class="bi bi-check-lg"></i> Approve</button>
                                                     </form>
                                                 <?php endif; ?>
@@ -464,6 +476,7 @@ $flash_err = flash_get('jersey_error');
                                                     <input type="hidden" name="game" value="<?= h($game) ?>">
                                                     <input type="hidden" name="event" value="<?= h($event) ?>">
                                                     <input type="hidden" name="ay" value="<?= h($ay) ?>">
+                                                    <input type="hidden" name="dept" value="<?= $dept_id ?>">
                                                     <input type="number" name="final_number" value="<?= (int)($r['final_number'] ?: $r['preferred_number']) ?>" min="1" max="99">
                                                     <button type="submit" class="btn btn-warning btn-sm" title="Save number"><i class="bi bi-pencil"></i></button>
                                                 </form>
@@ -476,6 +489,7 @@ $flash_err = flash_get('jersey_error');
                                                         <input type="hidden" name="game" value="<?= h($game) ?>">
                                                         <input type="hidden" name="event" value="<?= h($event) ?>">
                                                         <input type="hidden" name="ay" value="<?= h($ay) ?>">
+                                                        <input type="hidden" name="dept" value="<?= $dept_id ?>">
                                                         <button type="submit" class="btn btn-outline-danger btn-sm"><i class="bi bi-x-lg"></i> Reject</button>
                                                     </form>
                                                 <?php endif; ?>
@@ -487,6 +501,7 @@ $flash_err = flash_get('jersey_error');
                                                     <input type="hidden" name="game" value="<?= h($game) ?>">
                                                     <input type="hidden" name="event" value="<?= h($event) ?>">
                                                     <input type="hidden" name="ay" value="<?= h($ay) ?>">
+                                                    <input type="hidden" name="dept" value="<?= $dept_id ?>">
                                                     <button type="submit" class="btn btn-secondary btn-sm" title="Lock"><i class="bi bi-lock"></i> Lock</button>
                                                 </form>
                                             <?php else: ?>
@@ -518,6 +533,7 @@ $flash_err = flash_get('jersey_error');
                     <input type="hidden" name="game" value="<?= h($game) ?>">
                     <input type="hidden" name="event" value="<?= h($event) ?>">
                     <input type="hidden" name="ay" value="<?= h($ay) ?>">
+                    <input type="hidden" name="dept" value="<?= $dept_id ?>">
                     <button type="submit" class="btn btn-danger"><i class="bi bi-trash3"></i> Yes, Delete All</button>
                 </form>
             </div>

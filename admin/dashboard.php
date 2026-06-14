@@ -197,6 +197,9 @@ $flash = flash_get('dashboard_info');
                     <a href="achievements_list.php">
                         <i class="bi bi-trophy"></i> <span>Achievements</span>
                     </a>
+                    <a href="contact_messages.php">
+                        <i class="bi bi-envelope"></i> <span>Contact Messages</span>
+                    </a>
                 <?php endif; ?>
                 <?php if ($me['role'] === 'SUPER_ADMIN'): ?>
                     <div class="sidebar-nav-label">Admin</div>

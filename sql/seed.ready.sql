@@ -5,8 +5,6 @@
 --  an identical UI to the static HTML originals.
 -- =====================================================================
 
-USE `csf_portal`;
-
 -- ---------------------------------------------------------------------
 -- 1. departments
 -- ---------------------------------------------------------------------
@@ -25,25 +23,23 @@ INSERT INTO `departments` (`code`,`name`,`full_name`,`icon`,`display_order`) VAL
 -- 2. super-admin
 -- ---------------------------------------------------------------------
 INSERT INTO `faculty`
-    (`username`,`email`,`full_name`,`password_hash`,`role`,`phone`,`is_active`)
+    (`username`,`email`,`full_name`,`password_hash`,`role`,`phone`,`is_active`,`must_reset_pw`)
 VALUES
     ('admin', 'admin@yspm.org', 'Site Administrator',
-     '$2y$12$DARLN7q5gxzQcLQNrWo3xOmLVOAmVamaPAV4pDXFE0DEs6tBRqgB.', 'SUPER_ADMIN', '+91-9876543210', 1);
+     '$2y$12$eJyHLyb4/hAXmZsVRiy8uucMPrLFqSzxadRIwojM4S2zzMCZ.teze', 'SUPER_ADMIN', '+91-9876543210', 1, 1);
 
 -- ---------------------------------------------------------------------
 -- 3. faculty users (one per common department)
 -- ---------------------------------------------------------------------
 INSERT INTO `faculty`
-    (`username`,`email`,`full_name`,`password_hash`,`role`,`phone`,`is_active`)
+    (`username`,`email`,`full_name`,`password_hash`,`role`,`phone`,`is_active`,`must_reset_pw`)
 VALUES
     ('eng_faculty',   'eng@yspm.org',   'Dr. Patil (Engineering)',
-     '$2y$12$mf25gasXh6PISiFZDbAbU.HMfXMk1msDubO5GV09I1XOGCmDuARhK', 'FACULTY', '+91-9000000001', 1),
+     '$2y$12$x/Ddl4sHSR.E124aBlYHTO9bCNAvIKZTI6Pvfx3dZ2XiNKzYuU9em', 'FACULTY', '+91-9000000001', 1, 1),
     ('poly_faculty',  'poly@yspm.org',  'Prof. Deshmukh (Polytechnic)',
-     '$2y$12$mf25gasXh6PISiFZDbAbU.HMfXMk1msDubO5GV09I1XOGCmDuARhK', 'FACULTY', '+91-9000000002', 1),
+     '$2y$12$x/Ddl4sHSR.E124aBlYHTO9bCNAvIKZTI6Pvfx3dZ2XiNKzYuU9em', 'FACULTY', '+91-9000000002', 1, 1),
     ('pharm_faculty', 'pharm@yspm.org', 'Dr. Kulkarni (Pharmacy)',
-     '$2y$12$mf25gasXh6PISiFZDbAbU.HMfXMk1msDubO5GV09I1XOGCmDuARhK', 'FACULTY', '+91-9000000003', 1),
-    ('dpharm_faculty','dpharm@yspm.org','Dr. Pawar (D.Pharm)',
-     '$2y$12$mf25gasXh6PISiFZDbAbU.HMfXMk1msDubO5GV09I1XOGCmDuARhK', 'FACULTY', '+91-9000000004', 1);
+     '$2y$12$x/Ddl4sHSR.E124aBlYHTO9bCNAvIKZTI6Pvfx3dZ2XiNKzYuU9em', 'FACULTY', '+91-9000000003', 1, 1);
 
 -- ---------------------------------------------------------------------
 -- 3b. faculty_departments links for fresh installs
@@ -85,9 +81,9 @@ VALUES
         3,'B.Pharm','2025-26','First', 'Table Tennis','Carrom','Bronze - University TT', 4),
 
     ('BBA2025001','Harsh Ghorpade',  '2004-05-02','Male',  'B+', 'harsh@yspm.edu',  '+91-9800000009','+91-9800000019','Satara, MH',
-        6,'BBA Finance','2025-26','Third','Football','Cricket', NULL, 1),
+        7,'BBA Finance','2025-26','Third','Football','Cricket', NULL, 1),
     ('BBA2025002','Pooja Chavan',    '2005-10-17','Female','O+', 'pooja@yspm.edu',  '+91-9800000010','+91-9800000020','Pune, MH',
-        6,'BBA Marketing','2025-26','Second','Basketball','Throwball','MVP - Inter-College Basketball', 1);
+        7,'BBA Marketing','2025-26','Second','Basketball','Throwball','MVP - Inter-College Basketball', 1);
 
 -- ---------------------------------------------------------------------
 -- 5. hero_settings — MATCHES index.html exactly
@@ -122,12 +118,40 @@ VALUES
      'sports@ytc.edu.in');
 
 -- ---------------------------------------------------------------------
--- 7. notices — 5 items matching index.html demo
+-- 7. department document requirements
+-- ---------------------------------------------------------------------
+INSERT INTO `dept_document_requirements` (`department_id`,`document_name`,`is_required`)
+SELECT d.id, docs.document_name, 1
+  FROM departments d
+  JOIN (
+        SELECT 'Leaving Certificate' AS document_name
+        UNION ALL SELECT 'Hall Ticket'
+        UNION ALL SELECT 'Aadhaar Card'
+  ) docs
+ WHERE d.code IN ('polytechnic', 'dpharm');
+
+INSERT INTO `dept_document_requirements` (`department_id`,`document_name`,`is_required`)
+SELECT d.id, docs.document_name, 1
+  FROM departments d
+  JOIN (
+        SELECT '10th Marksheet' AS document_name
+        UNION ALL SELECT '12th Marksheet'
+        UNION ALL SELECT 'Leaving Certificate'
+        UNION ALL SELECT 'Aadhaar Card'
+        UNION ALL SELECT 'Admission Receipt'
+        UNION ALL SELECT 'Eligibility Certificate'
+        UNION ALL SELECT 'Passport Size Photo'
+        UNION ALL SELECT 'Previous Sports Certificate'
+  ) docs
+ WHERE d.code IN ('engineering', 'pharmacy', 'mba', 'mca', 'bba', 'bca', 'architecture');
+
+-- ---------------------------------------------------------------------
+-- 8. notices
 -- ---------------------------------------------------------------------
 -- Intentionally empty. Notices are created through the admin portal.
 
 -- ---------------------------------------------------------------------
--- 8. achievements — 3 slides matching index.html carousel
+-- 9. achievements
 -- ---------------------------------------------------------------------
 INSERT INTO `achievements`
     (`student_id`,`title`,`description`,`event_name`,`level`,`position`,`event_date`,`image_path`,`is_published`)

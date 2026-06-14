@@ -10,24 +10,27 @@ declare(strict_types=1);
 require_once __DIR__ . '/../includes/bootstrap.php';
 
 require_login();
+require_department();
 
 $me    = current_faculty();
 $game  = trim((string)($_GET['game'] ?? ''));
 $event = trim((string)($_GET['event'] ?? ''));
 $ay    = trim((string)($_GET['ay'] ?? ''));
+$deptId = (int)($_GET['dept'] ?? (effective_department_id() ?? 0));
 
-if ($game === '' || $event === '') {
+if ($game === '' || $event === '' || $deptId <= 0) {
     flash_set('jersey_error', 'Game and event are required.', 'error');
     redirect('jersey_manage.php');
 }
+assert_department_access($deptId);
 
-$ay_val = $ay === '' ? null : $ay;
+$ay_val = $ay;
 
 // Load the form
 $form = db_one(
     "SELECT id FROM jersey_forms
-      WHERE game_name = ? AND event_label = ? AND academic_year <=> ?",
-    [$game, $event, $ay_val], 'sss'
+      WHERE department_id = ? AND game_name = ? AND event_label = ? AND academic_year = ?",
+    [$deptId, $game, $event, $ay_val], 'isss'
 );
 
 if (!$form) {
@@ -44,15 +47,16 @@ $rows = db_select(
        FROM jersey_requests jr
        JOIN students s ON s.id = jr.student_id
       WHERE jr.jersey_form_id = ?
+        AND s.department_id = ?
         AND jr.status = 'Approved'
       ORDER BY COALESCE(jr.final_number, jr.preferred_number) ASC",
-    [(int)$form['id']], 'i'
+    [(int)$form['id'], $deptId], 'ii'
 );
 
 if (empty($rows)) {
     flash_set('jersey_error', 'No approved jersey requests to export.', 'error');
     redirect('jersey_manage.php?' . http_build_query(array_filter([
-        'game' => $game, 'event' => $event, 'ay' => $ay,
+        'game' => $game, 'event' => $event, 'ay' => $ay, 'dept' => $deptId,
     ])));
 }
 

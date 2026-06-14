@@ -1,0 +1,16 @@
+<?php
+/**
+ * Copy this file to config.local.php on the server and fill in real values.
+ * config.local.php is ignored by Git and blocked from direct web access.
+ */
+
+declare(strict_types=1);
+
+define('DB_HOST', 'localhost');
+define('DB_PORT', 3306);
+define('DB_NAME', 'cpanel_database_name');
+define('DB_USER', 'cpanel_database_user');
+define('DB_PASS', 'replace-with-a-strong-password');
+
+define('APP_ENV', 'production');
+define('SITE_URL', 'https://www.example.edu/sports');

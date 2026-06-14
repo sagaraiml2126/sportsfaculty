@@ -4,10 +4,6 @@
 -- =====================================================================
 
 SET FOREIGN_KEY_CHECKS=0;
-CREATE DATABASE IF NOT EXISTS `csf_portal`
-    DEFAULT CHARACTER SET utf8mb4
-    COLLATE utf8mb4_unicode_ci;
-USE `csf_portal`;
 SET FOREIGN_KEY_CHECKS=1;
 
 -- ---------------------------------------------------------------------
@@ -89,6 +85,7 @@ CREATE TABLE `students` (
     `sport_1`       VARCHAR(80)  NULL,
     `sport_2`       VARCHAR(80)  NULL,
     `achievements`  TEXT         NULL,
+    `sports_history` TEXT        NULL,
     `photo_path`    VARCHAR(255) NULL,
     `created_by`    INT UNSIGNED NULL,
     `created_at`    TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -226,5 +223,146 @@ CREATE TABLE `password_resets` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =====================================================================
---  END OF SCHEMA
+-- 10. provisional_entries
+-- ---------------------------------------------------------------------
+CREATE TABLE `provisional_entries` (
+    `id`              INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `game_name`       VARCHAR(80)  NOT NULL,
+    `event_label`     VARCHAR(120) NOT NULL DEFAULT '',
+    `event_date`      DATE         NULL,
+    `academic_year`   VARCHAR(10)  NULL,
+    `student_id`      INT UNSIGNED NOT NULL,
+    `notes`           VARCHAR(500) NULL,
+    `is_provisional`  TINYINT(1)   NOT NULL DEFAULT 1,
+    `added_by`        INT UNSIGNED NOT NULL,
+    `created_at`      TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_prov_student_list` (`game_name`,`event_label`,`academic_year`,`student_id`),
+    KEY `idx_prov_game_event` (`game_name`,`event_label`,`academic_year`),
+    KEY `idx_prov_student` (`student_id`),
+    KEY `idx_prov_added_by` (`added_by`),
+    CONSTRAINT `fk_prov_student` FOREIGN KEY (`student_id`)
+        REFERENCES `students`(`id`) ON UPDATE CASCADE ON DELETE CASCADE,
+    CONSTRAINT `fk_prov_added_by` FOREIGN KEY (`added_by`)
+        REFERENCES `faculty`(`id`) ON UPDATE CASCADE ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------------------------------------------------------------
+-- 11. department document requirements and student documents
+-- ---------------------------------------------------------------------
+CREATE TABLE `dept_document_requirements` (
+    `id`                 INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `department_id`      TINYINT UNSIGNED NOT NULL,
+    `document_name`      VARCHAR(100) NOT NULL,
+    `is_required`        TINYINT(1) NOT NULL DEFAULT 1,
+    `allowed_mime_types` VARCHAR(255) NOT NULL DEFAULT 'application/pdf,image/jpeg,image/png',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_dept_document` (`department_id`,`document_name`),
+    CONSTRAINT `fk_req_dept` FOREIGN KEY (`department_id`)
+        REFERENCES `departments`(`id`) ON UPDATE CASCADE ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `student_documents` (
+    `id`             INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `student_id`     INT UNSIGNED NOT NULL,
+    `requirement_id` INT UNSIGNED NOT NULL,
+    `file_path`      VARCHAR(255) NOT NULL,
+    `uploaded_at`    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_student_requirement` (`student_id`,`requirement_id`),
+    CONSTRAINT `fk_doc_student` FOREIGN KEY (`student_id`)
+        REFERENCES `students`(`id`) ON UPDATE CASCADE ON DELETE CASCADE,
+    CONSTRAINT `fk_doc_req` FOREIGN KEY (`requirement_id`)
+        REFERENCES `dept_document_requirements`(`id`) ON UPDATE CASCADE ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------------------------------------------------------------
+-- 12. final teams
+-- ---------------------------------------------------------------------
+CREATE TABLE `final_teams` (
+    `id`            INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `game_name`     VARCHAR(80)  NOT NULL,
+    `event_label`   VARCHAR(120) NOT NULL,
+    `academic_year` VARCHAR(10)  NULL,
+    `student_id`    INT UNSIGNED NOT NULL,
+    `roll_no`       VARCHAR(40)  NOT NULL,
+    `created_at`    TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `added_by`      INT UNSIGNED NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_final_student_list` (`game_name`,`event_label`,`academic_year`,`student_id`),
+    KEY `idx_final_game_event` (`game_name`,`event_label`,`academic_year`),
+    KEY `idx_final_student` (`student_id`),
+    CONSTRAINT `fk_final_student` FOREIGN KEY (`student_id`)
+        REFERENCES `students`(`id`) ON UPDATE CASCADE ON DELETE CASCADE,
+    CONSTRAINT `fk_final_faculty` FOREIGN KEY (`added_by`)
+        REFERENCES `faculty`(`id`) ON UPDATE CASCADE ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------------------------------------------------------------
+-- 13. jersey forms and requests
+-- ---------------------------------------------------------------------
+CREATE TABLE `jersey_forms` (
+    `id`              INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `department_id`   TINYINT UNSIGNED NOT NULL,
+    `game_name`       VARCHAR(80)  NOT NULL,
+    `event_label`     VARCHAR(120) NOT NULL,
+    `academic_year`   VARCHAR(10)  NOT NULL DEFAULT '',
+    `is_open`         TINYINT(1)   NOT NULL DEFAULT 0,
+    `access_token`    VARCHAR(64)  NOT NULL,
+    `created_by`      INT UNSIGNED NULL,
+    `created_at`      TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`      TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_jersey_form_team` (`department_id`,`game_name`,`event_label`,`academic_year`),
+    UNIQUE KEY `uq_jersey_token` (`access_token`),
+    CONSTRAINT `fk_jersey_form_department` FOREIGN KEY (`department_id`)
+        REFERENCES `departments`(`id`) ON UPDATE CASCADE ON DELETE RESTRICT,
+    CONSTRAINT `fk_jersey_form_faculty` FOREIGN KEY (`created_by`)
+        REFERENCES `faculty`(`id`) ON UPDATE CASCADE ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `jersey_requests` (
+    `id`               INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `jersey_form_id`   INT UNSIGNED NOT NULL,
+    `student_id`       INT UNSIGNED NOT NULL,
+    `enrollment_no`    VARCHAR(40)  NOT NULL,
+    `mobile`           VARCHAR(20)  NOT NULL,
+    `tshirt_size`      ENUM('XS','S','M','L','XL','XXL','3XL') NOT NULL,
+    `jersey_name`      VARCHAR(30)  NOT NULL,
+    `preferred_number` SMALLINT UNSIGNED NOT NULL,
+    `final_number`     SMALLINT UNSIGNED NULL,
+    `status`           ENUM('Pending','Approved','Rejected') NOT NULL DEFAULT 'Pending',
+    `locked`           TINYINT(1)   NOT NULL DEFAULT 0,
+    `created_at`       TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`       TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_jersey_student` (`jersey_form_id`,`student_id`),
+    KEY `idx_jersey_number` (`jersey_form_id`,`preferred_number`),
+    CONSTRAINT `fk_jersey_form` FOREIGN KEY (`jersey_form_id`)
+        REFERENCES `jersey_forms`(`id`) ON UPDATE CASCADE ON DELETE CASCADE,
+    CONSTRAINT `fk_jersey_student` FOREIGN KEY (`student_id`)
+        REFERENCES `students`(`id`) ON UPDATE CASCADE ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------------------------------------------------------------
+-- 14. public contact messages
+-- ---------------------------------------------------------------------
+CREATE TABLE `contact_messages` (
+    `id`         BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `name`       VARCHAR(120) NOT NULL,
+    `email`      VARCHAR(160) NOT NULL,
+    `phone`      VARCHAR(20)  NULL,
+    `subject`    VARCHAR(160) NULL,
+    `message`    TEXT         NOT NULL,
+    `ip`         VARBINARY(16) NOT NULL,
+    `user_agent` VARCHAR(255) NULL,
+    `is_read`    TINYINT(1)   NOT NULL DEFAULT 0,
+    `created_at` TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `idx_contact_status_time` (`is_read`,`created_at`),
+    KEY `idx_contact_ip_time` (`ip`,`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================================
+--  END OF SCHEMA (14 feature groups / 17 tables)
 -- =====================================================================

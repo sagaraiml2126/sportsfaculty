@@ -10,8 +10,6 @@
 --  before inserting new ones.
 -- =====================================================================
 
-USE `csf_portal`;
-
 -- Delete existing incorrect document requirements for Pharmacy (3), MBA (4),
 -- MCA (5), BBA (6), BCA (7), and Architecture (8).
 DELETE FROM `dept_document_requirements` WHERE `department_id` IN (3, 4, 5, 6, 7, 8);

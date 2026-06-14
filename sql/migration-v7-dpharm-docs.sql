@@ -8,8 +8,6 @@
 --  Safe to re-run: uses sub-select for department_id lookup.
 -- =====================================================================
 
-USE `csf_portal`;
-
 -- Seed D.Pharm document requirements (same as Polytechnic)
 INSERT INTO `dept_document_requirements` (`department_id`, `document_name`, `is_required`) VALUES
 ((SELECT id FROM departments WHERE code = 'dpharm' LIMIT 1), 'Leaving Certificate', 1),

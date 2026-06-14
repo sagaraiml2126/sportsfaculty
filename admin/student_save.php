@@ -29,8 +29,19 @@ $mobile_raw    = trim((string)($_POST['mobile']    ?? ''));
 $dob_raw       = trim((string)($_POST['dob']       ?? ''));
 $study_year_raw= trim((string)($_POST['study_year']?? ''));
 $mother_name_raw = trim((string)($_POST['mother_name'] ?? ''));
+$academic_year_raw = trim((string)($_POST['academic_year'] ?? ''));
+$sport_1_raw = trim((string)($_POST['sport_1'] ?? ''));
+
+$mobile_digits = preg_replace('/\D+/', '', $mobile_raw);
+if (strlen($mobile_digits) === 12 && str_starts_with($mobile_digits, '91')) {
+    $mobile_digits = substr($mobile_digits, 2);
+}
 
 $department = db_one('SELECT code FROM departments WHERE id = ? AND is_active = 1', [$dept_id], 'i');
+if (!$department) {
+    flash_set('student_error', 'Please select a valid department.', 'error');
+    redirect($id > 0 ? '../student-profile.php?id=' . $id : '../student-profile.php?new=1');
+}
 $is_engineering = ($department['code'] ?? '') === 'engineering';
 $uses_father_first_name = in_array($department['code'] ?? '', ['engineering', 'pharmacy'], true);
 $is_polytechnic = in_array($department['code'] ?? '', ['polytechnic', 'dpharm'], true);
@@ -51,6 +62,8 @@ if ($email_raw === '')      $missing[] = 'Email';
 if ($mobile_raw === '')     $missing[] = 'Mobile No';
 if ($dob_raw === '')        $missing[] = 'Date of Birth';
 if ($study_year_raw === '') $missing[] = 'Year of Study';
+if ($academic_year_raw === '') $missing[] = 'Academic Year';
+if ($sport_1_raw === '')     $missing[] = 'Primary Sport';
 if ($uses_father_first_name && $mother_name_raw === '') $missing[] = 'Father First Name';
 // roll_no is optional for polytechnic and dpharm
 if ($missing) {
@@ -71,8 +84,12 @@ if (!in_array($study_year_raw, $allowed_study_years, true)) {
 
 // Format checks (only fire if a value is present, but the required check above
 // already guarantees presence for the four fields below)
-if (!preg_match('/^[0-9]{10}$/', $mobile_raw)) {
+if (!preg_match('/^[0-9]{10}$/', $mobile_digits)) {
     flash_set('student_error', 'Mobile number must be exactly 10 digits.', 'error');
+    redirect($id > 0 ? '../student-profile.php?id=' . $id : '../student-profile.php?new=1');
+}
+if (!preg_match('/^\d{4}-\d{2}$/', $academic_year_raw)) {
+    flash_set('student_error', 'Academic year must use the format 2026-27.', 'error');
     redirect($id > 0 ? '../student-profile.php?id=' . $id : '../student-profile.php?new=1');
 }
 if (!preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $dob_raw, $dob_parts)
@@ -84,6 +101,12 @@ if (!preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $dob_raw, $dob_parts)
 }
 if (!filter_var($email_raw, FILTER_VALIDATE_EMAIL)) {
     flash_set('student_error', 'Please enter a valid email address.', 'error');
+    redirect($id > 0 ? '../student-profile.php?id=' . $id : '../student-profile.php?new=1');
+}
+if (mb_strlen($enrollment_no) > 40 || mb_strlen($roll_no_raw) > 40
+    || mb_strlen($full_name) > 160 || mb_strlen($mother_name_raw) > 160
+    || mb_strlen($email_raw) > 160 || mb_strlen($sport_1_raw) > 80) {
+    flash_set('student_error', 'One or more fields exceed the allowed length.', 'error');
     redirect($id > 0 ? '../student-profile.php?id=' . $id : '../student-profile.php?new=1');
 }
 
@@ -105,7 +128,7 @@ $photo_path = null;
 if (!empty($_FILES['photo']) && $_FILES['photo']['error'] !== UPLOAD_ERR_NO_FILE) {
     $up = handle_image_upload('students', $_FILES['photo'], 2000);
     if (!$up['ok']) {
-        flash_set('student_error', 'Photo upload failed: ' . $up['error'], 'error');
+        flash_set('student_error', 'Photo upload failed: ' . upload_error_message($up['error']), 'error');
         redirect($id > 0 ? '../student-profile.php?id=' . $id : '../student-profile.php?new=1');
     }
     $photo_path = $up['path'];
@@ -121,14 +144,14 @@ $data = [
     'gender'        => in_array($_POST['gender'] ?? '', gender_options(), true) ? $_POST['gender'] : null,
     'blood_group'   => in_array($_POST['blood_group'] ?? '', blood_options(), true) ? $_POST['blood_group'] : null,
     'email'         => trim((string)($_POST['email'] ?? '')) ?: null,
-    'mobile'        => trim((string)($_POST['mobile'] ?? '')) ?: null,
+    'mobile'        => $mobile_digits,
     'parent_phone'  => trim((string)($_POST['parent_phone'] ?? '')) ?: null,
     'address'       => trim((string)($_POST['address'] ?? '')) ?: null,
     'department_id' => $dept_id,
     'program'       => trim((string)($_POST['program'] ?? '')) ?: null,
-    'academic_year' => trim((string)($_POST['academic_year'] ?? '')) ?: null,
+    'academic_year' => $academic_year_raw,
     'study_year'    => $study_year_raw,
-    'sport_1'       => trim((string)($_POST['sport_1'] ?? '')) ?: null,
+    'sport_1'       => $sport_1_raw,
     'sport_2'       => trim((string)($_POST['sport_2'] ?? '')) ?: null,
     'achievements'  => trim((string)($_POST['achievements'] ?? '')) ?: null,
     'sports_history'=> trim((string)($_POST['sports_history'] ?? '')) ?: null,
@@ -156,17 +179,17 @@ if ($id > 0) {
     $params[] = $photo_path;
     $params[] = $id;
     db_execute($sql, $params);
-    if ($is_polytechnic) {
+    if ($stores_roll_no) {
         db_execute(
             'UPDATE final_teams SET roll_no = ? WHERE student_id = ?',
-            [$roll_no_raw, $id],
+            [$roll_no_raw !== '' ? $roll_no_raw : $enrollment_no, $id],
             'si'
         );
     }
 
     // Best-effort: remove old photo file if it was replaced
     if ($photo_path !== $existing['photo_path'] && !empty($existing['photo_path'])) {
-        @unlink(__DIR__ . '/../' . $existing['photo_path']);
+        delete_uploaded_file($existing['photo_path'], 'students');
     }
 
     // Parse achievements text and insert into achievements table
@@ -219,10 +242,22 @@ if ($id > 0) {
 
 // Handle Department-Specific Document Uploads
 if ($final_id > 0) {
+    $document_errors = [];
     foreach ($_FILES as $key => $file_data) {
         if (str_starts_with($key, 'doc_')) {
             $req_id = (int)substr($key, 4);
             if ($req_id <= 0) continue;
+            if (($file_data['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) continue;
+
+            $requirement = db_one(
+                'SELECT id FROM dept_document_requirements WHERE id = ? AND department_id = ?',
+                [$req_id, $dept_id],
+                'ii'
+            );
+            if (!$requirement) {
+                $document_errors[] = 'An invalid document field was rejected.';
+                continue;
+            }
 
             $up = handle_generic_document_upload('documents', $file_data);
             if ($up['ok']) {
@@ -230,7 +265,7 @@ if ($final_id > 0) {
                 $old_docs = db_select('SELECT id, file_path FROM student_documents WHERE student_id = ? AND requirement_id = ?', [$final_id, $req_id], 'ii');
                 if ($old_docs) {
                     foreach ($old_docs as $old) {
-                        @unlink(__DIR__ . '/../' . $old['file_path']);
+                        delete_uploaded_file($old['file_path'], 'documents');
                     }
                     db_execute('DELETE FROM student_documents WHERE student_id = ? AND requirement_id = ?', [$final_id, $req_id], 'ii');
                 }
@@ -239,8 +274,17 @@ if ($final_id > 0) {
                     'INSERT INTO student_documents (student_id, requirement_id, file_path) VALUES (?,?,?)',
                     [$final_id, $req_id, $up['path']], 'iis'
                 );
+            } else {
+                $document_errors[] = upload_error_message($up['error']);
             }
         }
+    }
+    if ($document_errors) {
+        flash_set(
+            'student_error',
+            'The profile was saved, but a document upload failed: ' . implode(' ', array_unique($document_errors)),
+            'error'
+        );
     }
 }
 

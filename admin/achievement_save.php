@@ -22,6 +22,10 @@ if ($student_id <= 0 || $title === '') {
     flash_set('student_error', 'Achievement title is required.', 'error');
     redirect('../student-profile.php?id=' . $student_id);
 }
+if (mb_strlen($title) > 200) {
+    flash_set('student_error', 'Achievement title is too long.', 'error');
+    redirect('../student-profile.php?id=' . $student_id);
+}
 
 // Verify student is in scope
 [$scope, $p, $t] = scope_sql_department('s');

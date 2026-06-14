@@ -34,32 +34,52 @@ if (!$user) {
     redirect('forgot-password.php');
 }
 
+$ip = filter_var($_SERVER['REMOTE_ADDR'] ?? '', FILTER_VALIDATE_IP) ?: '0.0.0.0';
+$recent = db_one(
+    'SELECT COUNT(*) AS n FROM password_resets
+      WHERE ip = INET6_ATON(?) AND created_at > (NOW() - INTERVAL 15 MINUTE)',
+    [$ip],
+    's'
+);
+if ((int)($recent['n'] ?? 0) >= 5) {
+    flash_set('forgot_info', $generic, 'info');
+    redirect('forgot-password.php');
+}
+
+db_execute(
+    'DELETE FROM password_resets
+      WHERE used_at IS NOT NULL OR expires_at < (NOW() - INTERVAL 1 DAY)'
+);
+
 // Generate token, store hash
 $token     = bin2hex(random_bytes(32));
 $token_hash = hash('sha256', $token);
 $expires   = date('Y-m-d H:i:s', time() + 1800); // 30 min
 
-// inet_pton returns 4 or 16 bytes; bind as 'b' (blob) to preserve binary.
-$ip_bytes  = @inet_pton($_SERVER['REMOTE_ADDR'] ?? '') ?: null;
-$ip_param  = $ip_bytes ?? "\x00\x00\x00\x00";
-$ip_type   = 'b';
-
 db_insert(
-    'INSERT INTO password_resets (faculty_id, token_hash, expires_at, ip) VALUES (?,?,?,?)',
-    [$user['id'], $token_hash, $expires, $ip_param],
-    'iss' . $ip_type
+    'INSERT INTO password_resets (faculty_id, token_hash, expires_at, ip)
+     VALUES (?,?,?,INET6_ATON(?))',
+    [$user['id'], $token_hash, $expires, $ip],
+    'isss'
 );
 
 $reset_url = SITE_URL . '/reset_password.php?token=' . $token;
 
-// In production: mail($user['email'], 'Reset your password', "Click: $reset_url");
-$mail_log = __DIR__ . '/mail.log';
-$log_line = date('c') . " | TO={$user['email']} | URL=$reset_url\n";
-@file_put_contents($mail_log, $log_line, FILE_APPEND);
-
 $flash = ['msg' => $generic, 'level' => 'info'];
 if (APP_ENV === 'local') {
     $flash['dev_link'] = $reset_url;
+} else {
+    $subject = 'Reset your Sports Portal password';
+    $body = "A password reset was requested for your account.\n\n"
+          . "Open this link within 30 minutes:\n$reset_url\n\n"
+          . "If you did not request this, you can ignore this message.";
+    $headers = [
+        'Content-Type: text/plain; charset=UTF-8',
+        'From: Sports Portal <no-reply@yes.edu.in>',
+    ];
+    if (!@mail((string)$user['email'], $subject, $body, implode("\r\n", $headers))) {
+        error_log('[mail] Password reset email could not be sent.');
+    }
 }
 flash_set('forgot_info', $flash['msg'], 'info');
 if (isset($flash['dev_link'])) {

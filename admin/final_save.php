@@ -36,6 +36,14 @@ if ($student_id <= 0 || $game_name === '' || $event_label === '') {
     flash_set('final_error', 'Game, event label, and student are required.', 'error');
     redirect($back_url);
 }
+if (mb_strlen($game_name) > 80 || mb_strlen($event_label) > 120) {
+    flash_set('final_error', 'Game or event label is too long.', 'error');
+    redirect($back_url);
+}
+if ($academic_year !== null && !preg_match('/^\d{4}-\d{2}$/', $academic_year)) {
+    flash_set('final_error', 'Academic year must use the format 2026-27.', 'error');
+    redirect($back_url);
+}
 
 // Verify student is in scope
 [$scope, $p, $t] = scope_sql_department('s');
@@ -73,7 +81,7 @@ db_insert(
         $event_label,
         $academic_year,
         $student_id,
-        trim((string)($student['roll_no'] ?? '')),
+        trim((string)($student['roll_no'] ?? '')) ?: $student['enrollment_no'],
         (int)$me['id'],
     ],
     'sssisi'

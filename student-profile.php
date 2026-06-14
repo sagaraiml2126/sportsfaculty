@@ -458,7 +458,7 @@ function medal_icon(string $class): string {
                                 </div>
                                 <div class="form-group">
                                     <label for="mobile">Mobile No. *</label>
-                                    <input type="tel" id="mobile" name="mobile" placeholder="10-digit mobile number" required pattern="[0-9]{10}" maxlength="10" inputmode="numeric" value="<?= h($student['mobile'] ?? '') ?>">
+                                    <input type="tel" id="mobile" name="mobile" placeholder="10-digit mobile number" required pattern="(?:\+91[- ]?)?[0-9]{10}" maxlength="14" inputmode="tel" value="<?= h($student['mobile'] ?? '') ?>">
                                 </div>
                                 <div class="form-group">
                                     <label for="parent_phone">Parent's Phone</label>

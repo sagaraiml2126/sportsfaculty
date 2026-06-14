@@ -1,7 +1,5 @@
 -- Transfer Pharmacy department access from pharm_faculty to eng_faculty.
 
-USE `csf_portal`;
-
 INSERT IGNORE INTO `faculty_departments` (`faculty_id`, `department_id`)
 SELECT f.id, d.id
   FROM `faculty` f

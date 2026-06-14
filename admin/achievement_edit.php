@@ -150,6 +150,7 @@ $students = db_select(
                 <div class="sidebar-nav-label">Site Content</div>
                 <a href="notices_list.php"><i class="bi bi-megaphone"></i> <span>Notices</span></a>
                 <a href="achievements_list.php" class="active"><i class="bi bi-trophy"></i> <span>Achievements</span></a>
+                <a href="contact_messages.php"><i class="bi bi-envelope"></i> <span>Contact Messages</span></a>
                 <?php if ($me['role'] === 'SUPER_ADMIN'): ?>
                     <div class="sidebar-nav-label">Admin</div>
                     <a href="faculty_manage.php"><i class="bi bi-people-fill"></i> <span>Faculty Management</span></a>

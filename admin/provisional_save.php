@@ -51,6 +51,17 @@ if (mb_strlen($game_name) > 80 || mb_strlen($event_label) > 120) {
     flash_set('prov_error', 'Game or event label is too long.', 'error');
     redirect($back_url);
 }
+if ($academic_year !== null && !preg_match('/^\d{4}-\d{2}$/', $academic_year)) {
+    flash_set('prov_error', 'Academic year must use the format 2026-27.', 'error');
+    redirect($back_url);
+}
+if ($event_date !== null) {
+    $date = DateTimeImmutable::createFromFormat('!Y-m-d', $event_date);
+    if (!$date || $date->format('Y-m-d') !== $event_date) {
+        flash_set('prov_error', 'Please enter a valid event date.', 'error');
+        redirect($back_url);
+    }
+}
 
 // Verify student is in scope
 [$scope, $p, $t] = scope_sql_department('s');

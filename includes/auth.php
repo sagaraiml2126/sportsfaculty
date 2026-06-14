@@ -70,10 +70,17 @@ function is_super_admin(): bool
 
 function require_login(): void
 {
-    if (!current_faculty()) {
+    $f = current_faculty();
+    if (!$f) {
         flash_set('login_error', 'Please sign in to continue.', 'error');
         $prefix = is_file('faculty-login.php') ? '' : '../';
         redirect($prefix . 'faculty-login.php');
+    }
+    $script = basename($_SERVER['SCRIPT_FILENAME'] ?? '');
+    if ((int)$f['must_reset_pw'] === 1
+        && !in_array($script, ['change_password.php', 'logout.php'], true)) {
+        $inAdmin = basename(dirname($_SERVER['SCRIPT_FILENAME'] ?? '')) === 'admin';
+        redirect($inAdmin ? 'change_password.php' : 'admin/change_password.php');
     }
 }
 
@@ -152,12 +159,13 @@ function logout_user(): void
 
 function record_login_attempt(string $username, bool $success): void
 {
-    $ip = inet_pton($_SERVER['REMOTE_ADDR'] ?? '0.0.0.0') ?: "\x00\x00\x00\x00";
+    $ip = filter_var($_SERVER['REMOTE_ADDR'] ?? '', FILTER_VALIDATE_IP) ?: '0.0.0.0';
     $ua = substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 250);
     db_insert(
-        'INSERT INTO login_attempts (username, ip, user_agent, success) VALUES (?,?,?,?)',
+        'INSERT INTO login_attempts (username, ip, user_agent, success)
+         VALUES (?, INET6_ATON(?), ?, ?)',
         [$username, $ip, $ua, $success ? 1 : 0],
-        'sibi'
+        'sssi'
     );
 }
 
@@ -166,15 +174,16 @@ function is_locked_out(): bool
     $remote = $_SERVER['REMOTE_ADDR'] ?? '';
     // If we can't parse the IP, treat the request as untrusted and lock it out
     // (fail-closed) rather than silently disabling brute-force protection.
-    $ip = $remote !== '' ? inet_pton($remote) : false;
+    $ip = filter_var($remote, FILTER_VALIDATE_IP);
     if ($ip === false) {
         return true;
     }
     $row = db_one(
         'SELECT COUNT(*) AS n FROM login_attempts
-         WHERE ip = ? AND success = 0 AND attempted_at > (NOW() - INTERVAL ? SECOND)',
+         WHERE ip = INET6_ATON(?) AND success = 0
+           AND attempted_at > (NOW() - INTERVAL ? SECOND)',
         [$ip, LOGIN_LOCKOUT_WINDOW],
-        'bi'
+        'si'
     );
     return ((int)($row['n'] ?? 0)) >= LOGIN_LOCKOUT_MAX;
 }
@@ -235,6 +244,35 @@ function assert_department_in_scope(?int $posted_dept_id): void
     $f = current_faculty();
     if (!$f || $f['role'] !== 'FACULTY') return;
     if ($posted_dept_id !== (int)$f['department_id']) {
+        http_response_code(403);
+        exit('Forbidden.');
+    }
+}
+
+/**
+ * Verify that the current account may operate on a specific department.
+ * Faculty must also have that department selected in the current session.
+ */
+function assert_department_access(int $department_id): void
+{
+    $f = current_faculty();
+    if (!$f || $department_id <= 0) {
+        http_response_code(403);
+        exit('Forbidden.');
+    }
+    if ($f['role'] === 'SUPER_ADMIN') {
+        return;
+    }
+    if ((int)($f['department_id'] ?? 0) !== $department_id) {
+        http_response_code(403);
+        exit('Forbidden.');
+    }
+    $assigned = db_one(
+        'SELECT 1 FROM faculty_departments WHERE faculty_id = ? AND department_id = ?',
+        [$f['id'], $department_id],
+        'ii'
+    );
+    if (!$assigned) {
         http_response_code(403);
         exit('Forbidden.');
     }

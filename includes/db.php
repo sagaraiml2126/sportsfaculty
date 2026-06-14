@@ -10,13 +10,18 @@ declare(strict_types=1);
 
 /* ---------------- configuration ---------------- */
 
-// Prefer app-specific DB_* variables, then Railway's native MySQL variables,
-// and finally the local XAMPP defaults.
-if (!defined('DB_HOST'))  define('DB_HOST',  getenv('DB_HOST') ?: getenv('MYSQLHOST') ?: '127.0.0.1');
-if (!defined('DB_USER'))  define('DB_USER',  getenv('DB_USER') ?: getenv('MYSQLUSER') ?: 'root');
-if (!defined('DB_PASS'))  define('DB_PASS',  getenv('DB_PASS') ?: getenv('MYSQLPASSWORD') ?: '');
-if (!defined('DB_NAME'))  define('DB_NAME',  getenv('DB_NAME') ?: getenv('MYSQLDATABASE') ?: 'csf_portal');
-if (!defined('DB_PORT'))  define('DB_PORT',  (int)(getenv('DB_PORT') ?: getenv('MYSQLPORT') ?: 3306));
+// cPanel/shared-hosting deployments can define secrets in this ignored file.
+$localConfig = __DIR__ . '/config.local.php';
+if (is_file($localConfig)) {
+    require $localConfig;
+}
+
+// Environment overrides via DB_* variables; local XAMPP defaults otherwise.
+if (!defined('DB_HOST'))  define('DB_HOST',  getenv('DB_HOST') ?: '127.0.0.1');
+if (!defined('DB_USER'))  define('DB_USER',  getenv('DB_USER') ?: 'root');
+if (!defined('DB_PASS'))  define('DB_PASS',  getenv('DB_PASS') ?: '');
+if (!defined('DB_NAME'))  define('DB_NAME',  getenv('DB_NAME') ?: 'csf_portal');
+if (!defined('DB_PORT'))  define('DB_PORT',  (int)(getenv('DB_PORT') ?: 3306));
 if (!defined('APP_ENV'))  define('APP_ENV',  getenv('APP_ENV')  ?: 'local'); // 'local' | 'production'
 
 /* ---------------- singleton connection ---------------- */
@@ -31,17 +36,27 @@ function db(): mysqli
         return $conn;
     }
 
-    $conn = mysqli_connect(DB_HOST, DB_USER, DB_PASS, DB_NAME, DB_PORT);
-    if (!$conn) {
+    try {
+        $conn = mysqli_connect(DB_HOST, DB_USER, DB_PASS, DB_NAME, DB_PORT);
+    } catch (mysqli_sql_exception $e) {
         // Never leak credentials in the error message
         $err  = 'Database connection failed.';
-        $code = mysqli_connect_errno();
+        $code = $e->getCode();
         if (APP_ENV === 'local') {
-            $err .= ' (' . $code . ': ' . htmlspecialchars(mysqli_connect_error()) . ')';
+            $err .= ' (' . $code . ': ' . htmlspecialchars($e->getMessage()) . ')';
         }
-        error_log('[db] connect failed: ' . $code . ' ' . mysqli_connect_error());
+        error_log('[db] connect failed: ' . $code . ' ' . $e->getMessage());
         http_response_code(500);
         exit($err);
+    }
+
+    if (!$conn instanceof mysqli) {
+        $detail = mysqli_connect_error() ?: 'unknown connection error';
+        error_log('[db] connect failed: ' . $detail);
+        http_response_code(500);
+        exit(APP_ENV === 'local'
+            ? 'Database connection failed. (' . htmlspecialchars($detail, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . ')'
+            : 'Database connection failed.');
     }
 
     mysqli_set_charset($conn, 'utf8mb4');

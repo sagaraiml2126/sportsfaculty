@@ -11,8 +11,6 @@
 --  preserved. The new column defaults to NULL.
 -- =====================================================================
 
-USE `csf_portal`;
-
 -- 1. Add the sports_history column if it doesn't already exist
 SET @col_exists := (
     SELECT COUNT(*) FROM information_schema.COLUMNS

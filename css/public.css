@@ -512,7 +512,7 @@ a:hover {
 /* ============================================ */
 /* MEDIA RESPONSIVENESS */
 /* ============================================ */
-@media (max-width: 991px) {
+@media (max-width: 1399px) {
     .page-banner h1 {
         font-size: 2rem;
     }
@@ -528,7 +528,34 @@ a:hover {
     .btn-admin-login {
         margin-left: 0;
         margin-top: 0.5rem;
-        display: inline-block;
+        display: inline-flex;
+    }
+}
+
+@media (min-width: 1400px) and (max-width: 1599px) {
+    .navbar-brand {
+        max-width: 48%;
+    }
+    .college-logo {
+        width: 60px;
+        height: 60px;
+    }
+    .college-name {
+        font-size: 1.05rem;
+    }
+    .college-affiliation {
+        font-size: 0.62rem;
+    }
+    .nav-link {
+        padding: 0.45rem 0.55rem !important;
+        font-size: 0.82rem;
+    }
+    .nav-link i {
+        margin-right: 0.2rem;
+    }
+    .btn-admin-login {
+        margin-left: 0.25rem;
+        padding-right: 0.8rem !important;
     }
 }
 
@@ -1212,6 +1239,36 @@ a:hover {
     background-color: var(--primary-navy);
     color: var(--white);
 }
+.committee-empty {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 3rem 2rem;
+    text-align: center;
+    background: var(--white);
+    border: 1px solid var(--light-gray);
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+}
+.committee-empty > i {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 64px;
+    height: 64px;
+    margin-bottom: 1rem;
+    border-radius: 50%;
+    background: rgba(201, 162, 39, 0.14);
+    color: var(--primary-navy);
+    font-size: 1.7rem;
+}
+.committee-empty h3 {
+    color: var(--primary-navy);
+    font-size: 1.2rem;
+}
+.committee-empty p {
+    margin: 0;
+    color: var(--medium-gray);
+}
 
 /* ============================================ */
 /* CONTACT SECTION - CARDS + FORM               */
@@ -1284,6 +1341,36 @@ a:hover {
     padding: 2rem;
     border: 1px solid var(--light-gray);
     height: 100%;
+}
+.contact-form h3 {
+    color: var(--primary-navy);
+    font-size: 1.25rem;
+    margin-bottom: 1.25rem;
+}
+.contact-form h3 i { color: var(--accent-gold); }
+.contact-alert {
+    margin-bottom: 1.25rem;
+    padding: 0.8rem 1rem;
+    border-radius: 8px;
+    font-size: 0.9rem;
+}
+.contact-alert.success {
+    color: #0a3622;
+    background: #d1e7dd;
+    border: 1px solid #a3cfbb;
+}
+.contact-alert.error {
+    color: #842029;
+    background: #f8d7da;
+    border: 1px solid #f1aeb5;
+}
+.contact-honeypot {
+    position: absolute !important;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
 }
 .form-group { margin-bottom: 1.25rem; }
 .form-group label {

@@ -8,7 +8,6 @@
  * It will:
  *   1. Generate bcrypt hashes for the two default passwords.
  *   2. Write the final seeded .sql into sql/seed.ready.sql (next to seed.sql).
- *   3. Optionally run `mysql` to import schema.sql + seed.ready.sql into csf_portal.
  *
  * Safe to delete after first use.
  */
@@ -37,6 +36,6 @@ echo "Wrote sql/seed.ready.sql\n";
 
 // Offer to import
 echo "\nTo import now, run:\n";
-echo "  mysql -u root -p < sql/schema.sql\n";
-echo "  mysql -u root -p csf_portal < sql/seed.ready.sql\n";
-echo "Or in phpMyAdmin: Import schema.sql, then import seed.ready.sql into csf_portal.\n";
+echo "  mysql -u root -p your_database < sql/schema.sql\n";
+echo "  mysql -u root -p your_database < sql/seed.ready.sql\n";
+echo "Or select your database in phpMyAdmin, then import schema.sql and seed.ready.sql.\n";

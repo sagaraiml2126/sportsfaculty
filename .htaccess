@@ -1,15 +1,21 @@
-# College Sports Faculty Portal — root .htaccess
+# College Sports Faculty Portal
 Options -Indexes
+AddDefaultCharset UTF-8
 
-# Block direct access to internal folders
-RedirectMatch 403 ^/college-sports-faculty/includes/.*$
-RedirectMatch 403 ^/college-sports-faculty/sql/.*$
+# Block hidden files, source metadata, SQL dumps, and local secrets.
+<FilesMatch "(^\.|\.md$|\.lock$|\.sql$|config\.local\.php$)">
+    Require all denied
+    <IfModule !mod_authz_core.c>
+        Deny from all
+    </IfModule>
+</FilesMatch>
 
-# Force trailing-slash consistency
 <IfModule mod_rewrite.c>
     RewriteEngine On
-    # nothing yet — placeholder
 </IfModule>
 
-# Default character set
-AddDefaultCharset UTF-8
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>

@@ -24,7 +24,55 @@ function upload_dir(string $bucket): string
             throw new RuntimeException("Failed to create upload directory: $dir");
         }
     }
+    if (!is_writable($dir)) {
+        throw new RuntimeException("Upload directory is not writable: $dir");
+    }
     return $dir;
+}
+
+function upload_error_message(string $code): string
+{
+    if (str_starts_with($code, 'upload_error_')) {
+        return match ((int)substr($code, 13)) {
+            UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE => 'The file is larger than the server upload limit.',
+            UPLOAD_ERR_PARTIAL => 'The file was only partially uploaded. Please try again.',
+            UPLOAD_ERR_NO_TMP_DIR => 'The server upload temporary directory is unavailable.',
+            UPLOAD_ERR_CANT_WRITE => 'The server could not write the uploaded file.',
+            UPLOAD_ERR_EXTENSION => 'A server extension blocked the upload.',
+            default => 'The upload could not be completed.',
+        };
+    }
+    return match ($code) {
+        'too_large' => 'The file is larger than the allowed size.',
+        'bad_extension', 'bad_mime', 'not_an_image' => 'The selected file type is not allowed.',
+        'move_failed' => 'The server could not store the uploaded file.',
+        'no_file' => 'No file was selected.',
+        default => 'The upload could not be completed.',
+    };
+}
+
+/**
+ * Delete a stored upload only when its resolved path is inside the expected
+ * upload bucket. Invalid, missing, and already-deleted paths are ignored.
+ */
+function delete_uploaded_file(?string $relative_path, string $bucket): bool
+{
+    if (!$relative_path || !in_array($bucket, UPLOAD_BUCKETS, true)) {
+        return false;
+    }
+
+    $bucket_root = realpath(UPLOAD_BASE . '/' . $bucket);
+    $target = realpath(__DIR__ . '/../' . ltrim(str_replace('\\', '/', $relative_path), '/'));
+    if ($bucket_root === false || $target === false || !is_file($target)) {
+        return false;
+    }
+
+    $prefix = rtrim($bucket_root, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
+    $inside_bucket = DIRECTORY_SEPARATOR === '\\'
+        ? str_starts_with(strtolower($target), strtolower($prefix))
+        : str_starts_with($target, $prefix);
+
+    return $inside_bucket && @unlink($target);
 }
 
 /**
@@ -55,6 +103,15 @@ function handle_image_upload(string $bucket, ?array $file, int $max_kb = 2000, a
     if ($info === false) {
         return ['ok' => false, 'error' => 'not_an_image'];
     }
+    $image_extensions = [
+        IMAGETYPE_JPEG => ['jpg', 'jpeg'],
+        IMAGETYPE_PNG  => ['png'],
+        IMAGETYPE_WEBP => ['webp'],
+    ];
+    $detected_extensions = $image_extensions[$info[2] ?? 0] ?? [];
+    if (!in_array($ext, $detected_extensions, true)) {
+        return ['ok' => false, 'error' => 'bad_mime'];
+    }
     $safe_name = bin2hex(random_bytes(8)) . '.' . $ext;
     $dest_dir  = upload_dir($bucket);
     $dest_path = $dest_dir . '/' . $safe_name;
@@ -81,6 +138,9 @@ function handle_generic_document_upload(string $bucket, ?array $file, array $all
     }
 
     $finfo = finfo_open(FILEINFO_MIME_TYPE);
+    if ($finfo === false) {
+        throw new RuntimeException('The PHP fileinfo extension is required for uploads.');
+    }
     $mime = finfo_file($finfo, $file['tmp_name']);
     finfo_close($finfo);
 
@@ -124,6 +184,9 @@ function handle_pdf_upload(string $bucket, ?array $file, int $max_kb = 5000): ar
         return ['ok' => false, 'error' => 'bad_extension'];
     }
     $finfo = finfo_open(FILEINFO_MIME_TYPE);
+    if ($finfo === false) {
+        throw new RuntimeException('The PHP fileinfo extension is required for uploads.');
+    }
     $mime  = finfo_file($finfo, $file['tmp_name']);
     finfo_close($finfo);
     if ($mime !== 'application/pdf') {

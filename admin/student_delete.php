@@ -30,11 +30,17 @@ if (!$row) {
     redirect('../admin/student_list.php');
 }
 
+$document_paths = db_select(
+    'SELECT file_path FROM student_documents WHERE student_id = ?',
+    [$id],
+    'i'
+);
+
 db_execute('DELETE FROM students WHERE id = ?', [$id], 'i');
 
-// Best-effort photo cleanup
-if (!empty($row['photo_path'])) {
-    @unlink(__DIR__ . '/../' . $row['photo_path']);
+delete_uploaded_file($row['photo_path'] ?? null, 'students');
+foreach ($document_paths as $document) {
+    delete_uploaded_file($document['file_path'] ?? null, 'documents');
 }
 
 flash_set('student_saved', 'Student deleted.', 'success');

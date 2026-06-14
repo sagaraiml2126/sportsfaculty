@@ -260,6 +260,7 @@ $flash_err = flash_get('final_error');
                     <div class="sidebar-nav-label">Site Content</div>
                     <a href="notices_list.php"><i class="bi bi-megaphone"></i> <span>Notices</span></a>
                     <a href="achievements_list.php"><i class="bi bi-trophy"></i> <span>Achievements</span></a>
+                    <a href="contact_messages.php"><i class="bi bi-envelope"></i> <span>Contact Messages</span></a>
                 <?php endif; ?>
                 <?php if ($me['role'] === 'SUPER_ADMIN'): ?>
                     <div class="sidebar-nav-label">Admin</div>
@@ -311,9 +312,15 @@ $flash_err = flash_get('final_error');
                             <span><span class="label">AY</span><span class="value"><?= h($ay !== '' ? $ay : '—') ?></span></span>
                         </div>
                         <div class="group">
-                            <a href="final_import.php?<?= h($list_query) ?>" class="btn btn-success">
-                                <i class="bi bi-arrow-down-circle"></i> Import from Provisional
-                            </a>
+                            <form method="post" action="final_import.php" style="display:inline">
+                                <?= csrf_field() ?>
+                                <input type="hidden" name="game" value="<?= h($game) ?>">
+                                <input type="hidden" name="event" value="<?= h($event) ?>">
+                                <input type="hidden" name="ay" value="<?= h($ay) ?>">
+                                <button type="submit" class="btn btn-success">
+                                    <i class="bi bi-arrow-down-circle"></i> Import from Provisional
+                                </button>
+                            </form>
                             <a href="final_list.php" class="btn btn-secondary"><i class="bi bi-arrow-left-right"></i> Change list</a>
                         </div>
                     </div>

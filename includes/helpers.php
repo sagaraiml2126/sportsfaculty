@@ -48,8 +48,7 @@ function url(string $path): string
 
 /**
  * 302 redirect + exit. Pass an absolute or root-relative path.
- * Always emits a full absolute URL so the browser never mistakes
- * a relative path for a domain name.
+ * Internal redirects are root-relative to avoid trusting the Host header.
  */
 function redirect(string $path): never
 {
@@ -73,13 +72,7 @@ function redirect(string $path): never
     }
     $path = '/' . implode('/', $parts);
 
-    // Build full absolute URL
-    $forwarded_proto = strtolower(trim(explode(',', $_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')[0]));
-    $scheme = ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || $forwarded_proto === 'https')
-        ? 'https'
-        : 'http';
-    $host   = $_SERVER['HTTP_HOST'] ?? $_SERVER['SERVER_NAME'] ?? 'localhost';
-    header('Location: ' . $scheme . '://' . $host . $path);
+    header('Location: ' . $path);
     exit;
 }
 

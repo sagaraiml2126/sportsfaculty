@@ -1,7 +1,5 @@
 -- Migration v6: Student Document Management
 SET FOREIGN_KEY_CHECKS=0;
-USE csf_portal;
-
 DROP TABLE IF EXISTS `student_documents`;
 DROP TABLE IF EXISTS `dept_document_requirements`;
 

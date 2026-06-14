@@ -31,6 +31,10 @@ if ($title === '') {
     flash_set('notice_error', 'Title is required.', 'error');
     redirect($back);
 }
+if (mb_strlen($title) > 255 || mb_strlen($category) > 60) {
+    flash_set('notice_error', 'Title or category is too long.', 'error');
+    redirect($back);
+}
 if ($notice_date === '') {
     flash_set('notice_error', 'Notice date is required.', 'error');
     redirect($back);
@@ -56,10 +60,7 @@ if ($id > 0) {
 if (!empty($_FILES['attachment']) && ($_FILES['attachment']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
     $up = handle_pdf_upload('notices', $_FILES['attachment'], 5000);
     if (!$up['ok']) {
-        $reason = $up['error'] === 'too_large'      ? 'PDF is larger than 5 MB.'
-                : ($up['error'] === 'bad_extension' ? 'Only PDF files are allowed.'
-                : ($up['error'] === 'bad_mime'      ? 'File is not a valid PDF.'
-                : ('Upload failed (' . h($up['error']) . ').')));
+        $reason = upload_error_message($up['error']);
         flash_set('notice_error', $reason, 'error');
         redirect($back);
     }
@@ -78,8 +79,7 @@ if ($id > 0) {
         );
         // Remove the old PDF now that the new one is safely in the DB
         if ($old_attachment && $old_attachment !== $attachment_filename) {
-            $abs = __DIR__ . '/../uploads/notices/' . basename($old_attachment);
-            if (is_file($abs)) @unlink($abs);
+            delete_uploaded_file('uploads/notices/' . basename($old_attachment), 'notices');
         }
     } else {
         db_execute(

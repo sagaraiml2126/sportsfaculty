@@ -2,7 +2,7 @@
 /**
  * Import players from a provisional list to a final team.
  *
- * GET params:
+ * POST fields:
  *   game    string (required)
  *   event   string (required)
  *   ay      string (optional)
@@ -14,9 +14,15 @@ require_once __DIR__ . '/../includes/bootstrap.php';
 require_login();
 require_department();
 
-$game  = trim((string)($_GET['game'] ?? ''));
-$event = trim((string)($_GET['event'] ?? ''));
-$ay    = trim((string)($_GET['ay'] ?? ''));
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    http_response_code(405);
+    exit('Method not allowed.');
+}
+csrf_check();
+
+$game  = trim((string)($_POST['game'] ?? ''));
+$event = trim((string)($_POST['event'] ?? ''));
+$ay    = trim((string)($_POST['ay'] ?? ''));
 
 if ($game === '' || $event === '') {
     http_response_code(400);
@@ -46,7 +52,7 @@ if (!$provisional_players) {
 $imported_count = 0;
 foreach ($provisional_players as $player) {
     // Use INSERT IGNORE to prevent duplicates if some players were already added manually
-    db_execute(
+    $affected = db_execute(
         "INSERT IGNORE INTO final_teams
          (game_name, event_label, academic_year, student_id, roll_no, added_by)
          VALUES (?, ?, ?, ?, ?, ?)",
@@ -60,7 +66,7 @@ foreach ($provisional_players as $player) {
         ],
         'sssisi'
     );
-    if (db_affected_rows() > 0) {
+    if ($affected > 0) {
         $imported_count++;
     }
 }

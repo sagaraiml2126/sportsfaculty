@@ -36,6 +36,10 @@ if ($title === '') {
     flash_set('ach_error', 'Title is required.', 'error');
     redirect($back);
 }
+if (mb_strlen($title) > 200 || mb_strlen($event_name) > 160 || mb_strlen($position) > 40) {
+    flash_set('ach_error', 'Title, event name, or position is too long.', 'error');
+    redirect($back);
+}
 
 $allowed_levels = ['College','University','State','National','International'];
 $level = in_array($level_raw, $allowed_levels, true) ? $level_raw : null;
@@ -63,12 +67,7 @@ if ($id > 0) {
 if (!empty($_FILES['image']) && ($_FILES['image']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
     $up = handle_image_upload('achievements', $_FILES['image'], 5000);
     if (!$up['ok']) {
-        $reason = $up['error'] === 'too_large'      ? 'Image is larger than 5 MB.'
-                : ($up['error'] === 'upload_error_' . UPLOAD_ERR_INI_SIZE
-                    ? 'The server rejected the image because it exceeds the upload limit.'
-                : ($up['error'] === 'bad_extension' ? 'Only JPG, PNG, or WebP images are allowed.'
-                : ($up['error'] === 'not_an_image'   ? 'File is not a valid image.'
-                : ('Upload failed (' . h($up['error']) . ').'))));
+        $reason = upload_error_message($up['error']);
         flash_set('ach_error', $reason, 'error');
         redirect($back);
     }
@@ -86,8 +85,7 @@ if ($id > 0) {
         );
         // Remove the old image now that the new one is safely in the DB
         if ($old_image_path && $old_image_path !== $new_image_path) {
-            $abs = __DIR__ . '/../' . ltrim($old_image_path, '/');
-            if (is_file($abs)) @unlink($abs);
+            delete_uploaded_file($old_image_path, 'achievements');
         }
     } else {
         db_execute(

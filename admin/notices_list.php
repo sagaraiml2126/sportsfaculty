@@ -24,8 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($existing) {
             // Best-effort: remove the attached PDF from disk
             if (!empty($existing['attachment'])) {
-                $abs = __DIR__ . '/../uploads/notices/' . basename($existing['attachment']);
-                if (is_file($abs)) @unlink($abs);
+                delete_uploaded_file('uploads/notices/' . basename($existing['attachment']), 'notices');
             }
             db_execute('DELETE FROM notices WHERE id = ?', [$id], 'i');
             flash_set('notice_saved', 'Notice deleted.', 'success');
@@ -164,6 +163,7 @@ if ($q !== '') {
                 <div class="sidebar-nav-label">Site Content</div>
                 <a href="notices_list.php" class="active"><i class="bi bi-megaphone"></i> <span>Notices</span></a>
                 <a href="achievements_list.php"><i class="bi bi-trophy"></i> <span>Achievements</span></a>
+                <a href="contact_messages.php"><i class="bi bi-envelope"></i> <span>Contact Messages</span></a>
                 <?php if ($me['role'] === 'SUPER_ADMIN'): ?>
                     <div class="sidebar-nav-label">Admin</div>
                     <a href="faculty_manage.php"><i class="bi bi-people-fill"></i> <span>Faculty Management</span></a>

@@ -6,6 +6,10 @@ DELETE fd
   JOIN `faculty` f ON f.id = fd.faculty_id
  WHERE f.username IN ('eng_faculty', 'poly_faculty', 'pharm_faculty', 'dpharm_faculty');
 
+UPDATE `faculty`
+   SET `is_active` = 0
+ WHERE `username` = 'dpharm_faculty';
+
 INSERT INTO `faculty_departments` (`faculty_id`,`department_id`)
 SELECT f.id, d.id
   FROM `faculty` f

@@ -46,12 +46,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $valid_user_id) {
         $err = 'Passwords do not match.';
     } else {
         $new_hash = password_hash($pw1, PASSWORD_BCRYPT, ['cost' => 12]);
-        db_execute('UPDATE faculty SET password_hash=?, must_reset_pw=0 WHERE id=?',
-            [$new_hash, $valid_user_id], 'si');
-        db_execute('UPDATE password_resets SET used_at = NOW() WHERE id=?',
-            [$row['id']], 'i');
-        flash_set('login_error', 'Password reset. Please sign in with your new password.', 'info');
-        redirect('faculty-login.php');
+        mysqli_begin_transaction(db());
+        try {
+            $locked = db_one(
+                'SELECT id, faculty_id FROM password_resets
+                  WHERE id = ? AND used_at IS NULL AND expires_at >= NOW()
+                  FOR UPDATE',
+                [(int)$row['id']],
+                'i'
+            );
+            if (!$locked || (int)$locked['faculty_id'] !== $valid_user_id) {
+                throw new RuntimeException('This reset link is no longer valid.');
+            }
+            db_execute(
+                'UPDATE faculty SET password_hash=?, must_reset_pw=0 WHERE id=?',
+                [$new_hash, $valid_user_id],
+                'si'
+            );
+            db_execute(
+                'UPDATE password_resets SET used_at = NOW()
+                  WHERE faculty_id = ? AND used_at IS NULL',
+                [$valid_user_id],
+                'i'
+            );
+            mysqli_commit(db());
+            flash_set('login_error', 'Password reset. Please sign in with your new password.', 'info');
+            redirect('faculty-login.php');
+        } catch (Throwable $e) {
+            mysqli_rollback(db());
+            $err = APP_ENV === 'local' ? $e->getMessage() : 'This reset link is no longer valid.';
+            $valid_user_id = null;
+        }
     }
 }
 ?>

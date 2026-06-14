@@ -1,7 +1,7 @@
 <?php
 /**
  * Public homepage. Data-driven from college_settings, hero_settings,
- * notices, achievements, and faculty tables. Visual layout 1:1 with index.html.
+ * notices, achievements, and site settings.
  */
 
 declare(strict_types=1);
@@ -54,6 +54,8 @@ $ticker = db_select(
       ORDER BY notice_date DESC LIMIT 5"
 );
 
+$contact_flash = flash_get('contact_result');
+
 // Achievement placeholder images — same Unsplash URLs as index.html
 $achievement_images = [
     'https://images.unsplash.com/photo-1574623452334-1e0ac2b3ccb4?w=1200',
@@ -61,10 +63,8 @@ $achievement_images = [
     'https://images.unsplash.com/photo-1554068865-24cecd4e34b8?w=1200',
 ];
 
-// Sports committee: HTML demo shows 3 hard-coded cards (Director / Head
-// Coach / Coordinator). Rendered as static markup below — no DB query
-// because the live faculty table holds user/role accounts, not
-// committee members.
+// Committee identities are intentionally withheld until the college provides
+// confirmed names and contact details.
 
 /* ---------------- helpers for the view ---------------- */
 
@@ -110,7 +110,7 @@ function time_ago(?string $date): string
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description"
-        content="Official Sports Department Portal - <?= h($college['name']) ?>. View notices, achievements, committee profiles, and sports announcements.">
+        content="Official Sports Department Portal - <?= h($college['name']) ?>. View notices, achievements, and sports announcements.">
     <meta name="keywords" content="college sports, sports department, athletics, achievements, notices">
     <meta name="author" content="<?= h($college['name']) ?> - Department of Sports">
     <title>Department of Sports | <?= h($college['name']) ?></title>
@@ -173,7 +173,7 @@ function time_ago(?string $date): string
     <!-- MAIN HEADER                                  -->
     <!-- ============================================ -->
     <header class="main-header">
-        <nav class="navbar navbar-expand-lg" role="navigation" aria-label="Main Navigation">
+        <nav class="navbar navbar-expand-xxl" role="navigation" aria-label="Main Navigation">
             <div class="container">
                 <a class="navbar-brand" href="index.php">
                     <img src="<?= h(url($college['logo_path'])) ?>" alt="<?= h($college['name']) ?>"
@@ -496,41 +496,89 @@ function time_ago(?string $date): string
         <section class="committee-section" id="committee-section" aria-labelledby="committee-heading">
             <div class="container">
                 <h2 id="committee-heading" class="section-title">Sports Committee</h2>
+                <div class="committee-empty">
+                    <i class="bi bi-people" aria-hidden="true"></i>
+                    <h3>Committee details coming soon</h3>
+                    <p>Official Sports Committee information will be published after confirmation by the college administration.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============================================ -->
+        <!-- CONTACT                                      -->
+        <!-- ============================================ -->
+        <section class="contact-section" id="contact-section" aria-labelledby="contact-heading">
+            <div class="container">
+                <h2 id="contact-heading" class="section-title">Contact the Sports Department</h2>
                 <div class="row g-4">
-                    <?php
-                    // The HTML demo has 3 hard-coded committee cards (Director /
-                    // Head Coach / Coordinator) as the canonical reference.
-                    // The faculty table in the DB holds user/role accounts, not
-                    // committee members, so we render the HTML demo by default
-                    // to keep the page visually identical to index.html.
-                    $demo_committee = [
-                        ['name' => 'Dr. Rajesh Kumar', 'badge' => 'Director', 'desig' => 'Director of Sports', 'dept' => 'Department of Physical Education', 'email' => 'director.sports@xyz.edu', 'phone' => '+911234567890', 'photo' => 'https://placehold.co/400x500/1a365d/ffffff?text=Director'],
-                        ['name' => 'Prof. Sarah Johnson', 'badge' => 'Head Coach', 'desig' => 'Head Coach - Team Sports', 'dept' => 'Basketball, Volleyball, Football', 'email' => 'sarah.johnson@xyz.edu', 'phone' => '+911234567891', 'photo' => 'https://placehold.co/400x500/722f37/ffffff?text=Coach'],
-                        ['name' => 'Mr. Arun Nair', 'badge' => 'Coordinator', 'desig' => 'Sports Coordinator', 'dept' => 'Athletics & Indoor Games', 'email' => 'arun.nair@xyz.edu', 'phone' => '+911234567892', 'photo' => 'https://placehold.co/400x500/2c5282/ffffff?text=Coordinator'],
-                    ];
-                    foreach ($demo_committee as $idx => $m):
-                        $col_class = $idx === 2 ? 'col-md-6 col-lg-4 mx-auto' : 'col-md-6 col-lg-4';
-                        ?>
-                        <div class="<?= h($col_class) ?>">
-                            <article class="faculty-card">
-                                <div class="faculty-image-wrapper">
-                                    <img src="<?= h($m['photo']) ?>" alt="<?= h($m['name']) ?>" class="faculty-image">
+                    <div class="col-lg-5">
+                        <div class="contact-card">
+                            <h3><i class="bi bi-building"></i> Department Information</h3>
+                            <div class="contact-info-item">
+                                <div class="contact-icon"><i class="bi bi-geo-alt"></i></div>
+                                <div class="contact-details">
+                                    <h4>Address</h4>
+                                    <p><?= h($college['address']) ?></p>
                                 </div>
-                                <div class="faculty-info">
-                                    <span class="faculty-badge"><?= h($m['badge']) ?></span>
-                                    <h3 class="faculty-name"><?= h($m['name']) ?></h3>
-                                    <p class="faculty-designation"><?= h($m['desig']) ?></p>
-                                    <p class="faculty-department"><?= h($m['dept']) ?></p>
-                                    <div class="faculty-contact">
-                                        <a href="mailto:<?= h($m['email']) ?>" aria-label="Email <?= h($m['name']) ?>"><i
-                                                class="bi bi-envelope-fill"></i></a>
-                                        <a href="tel:<?= h($m['phone']) ?>" aria-label="Call <?= h($m['name']) ?>"><i
-                                                class="bi bi-telephone-fill"></i></a>
-                                    </div>
+                            </div>
+                            <div class="contact-info-item">
+                                <div class="contact-icon"><i class="bi bi-telephone"></i></div>
+                                <div class="contact-details">
+                                    <h4>Phone</h4>
+                                    <p><?= h($college['phone']) ?></p>
                                 </div>
-                            </article>
+                            </div>
+                            <div class="contact-info-item">
+                                <div class="contact-icon"><i class="bi bi-envelope"></i></div>
+                                <div class="contact-details">
+                                    <h4>Email</h4>
+                                    <p><?= h($college['email']) ?></p>
+                                </div>
+                            </div>
                         </div>
-                    <?php endforeach; ?>
+                    </div>
+                    <div class="col-lg-7">
+                        <form class="contact-form" method="post" action="contact_submit.php">
+                            <h3><i class="bi bi-chat-left-text"></i> Send a Message</h3>
+                            <?php if ($contact_flash): ?>
+                                <div class="contact-alert <?= $contact_flash['level'] === 'success' ? 'success' : 'error' ?>" role="alert">
+                                    <?= h($contact_flash['msg']) ?>
+                                </div>
+                            <?php endif; ?>
+                            <?= csrf_field() ?>
+                            <div class="contact-honeypot" aria-hidden="true">
+                                <label for="website">Website</label>
+                                <input type="text" id="website" name="website" tabindex="-1" autocomplete="off">
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 form-group">
+                                    <label for="contact-name">Name *</label>
+                                    <input type="text" id="contact-name" name="name" maxlength="120" required autocomplete="name">
+                                </div>
+                                <div class="col-md-6 form-group">
+                                    <label for="contact-email">Email *</label>
+                                    <input type="email" id="contact-email" name="email" maxlength="160" required autocomplete="email">
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 form-group">
+                                    <label for="contact-phone">Phone</label>
+                                    <input type="tel" id="contact-phone" name="phone" maxlength="20" autocomplete="tel">
+                                </div>
+                                <div class="col-md-6 form-group">
+                                    <label for="contact-subject">Subject</label>
+                                    <input type="text" id="contact-subject" name="subject" maxlength="160">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="contact-message">Message *</label>
+                                <textarea id="contact-message" name="message" minlength="10" maxlength="3000" required></textarea>
+                            </div>
+                            <button type="submit" class="btn-submit">
+                                <i class="bi bi-send"></i> Send Message
+                            </button>
+                        </form>
+                    </div>
                 </div>
             </div>
         </section>
@@ -574,7 +622,7 @@ function time_ago(?string $date): string
     <!-- ============================================ -->
     <!-- OFFICIAL FOOTER                              -->
     <!-- ============================================ -->
-    <footer class="main-footer" id="contact-section" role="contentinfo">
+    <footer class="main-footer" role="contentinfo">
         <div class="container">
             <div class="row g-4">
                 <div class="col-lg-4 col-md-6">
@@ -621,12 +669,12 @@ function time_ago(?string $date): string
                     <div class="footer-section">
                         <h4>Sports We Offer</h4>
                         <ul>
-                            <li><i class="bi bi-chevron-right"></i> <a href="#">Cricket</a></li>
-                            <li><i class="bi bi-chevron-right"></i> <a href="#">Football</a></li>
-                            <li><i class="bi bi-chevron-right"></i> <a href="#">Basketball</a></li>
-                            <li><i class="bi bi-chevron-right"></i> <a href="#">Volleyball</a></li>
-                            <li><i class="bi bi-chevron-right"></i> <a href="#">Athletics</a></li>
-                            <li><i class="bi bi-chevron-right"></i> <a href="#">Badminton</a></li>
+                            <li><i class="bi bi-chevron-right"></i> Cricket</li>
+                            <li><i class="bi bi-chevron-right"></i> Football</li>
+                            <li><i class="bi bi-chevron-right"></i> Basketball</li>
+                            <li><i class="bi bi-chevron-right"></i> Volleyball</li>
+                            <li><i class="bi bi-chevron-right"></i> Athletics</li>
+                            <li><i class="bi bi-chevron-right"></i> Badminton</li>
                         </ul>
                     </div>
                 </div>
@@ -636,10 +684,7 @@ function time_ago(?string $date): string
                         <h4>Important Links</h4>
                         <ul>
                             <li><i class="bi bi-chevron-right"></i> <a href="faculty-login.php">Admin Login</a></li>
-                            <li><i class="bi bi-chevron-right"></i> <a href="#">Tenders</a></li>
-                            <li><i class="bi bi-chevron-right"></i> <a href="#">RTI</a></li>
-                            <li><i class="bi bi-chevron-right"></i> <a href="#">Privacy Policy</a></li>
-                            <li><i class="bi bi-chevron-right"></i> <a href="#">Sitemap</a></li>
+                            <li><i class="bi bi-chevron-right"></i> <a href="https://www.yes.edu.in/" target="_blank" rel="noopener noreferrer">College Website</a></li>
                         </ul>
                     </div>
                 </div>
@@ -778,13 +823,6 @@ function time_ago(?string $date): string
                 apply(false);
             })();
         });
-
-        // ---- Contact form demo handler ----
-        function handleContactSubmit(e) {
-            e.preventDefault();
-            alert('Thank you for your message! We will get back to you soon.\n\n(Note: This is a demo. Backend integration required to send emails.)');
-            e.target.reset();
-        }
 
         // ---- PDF viewer modal ----
         function openPdfViewer(btn) {

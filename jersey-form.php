@@ -69,6 +69,7 @@ $errors       = [];
 $old          = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $form && (int)$form['is_open']) {
+    csrf_check();
     $enrollment = strtoupper(trim((string)($_POST['enrollment_no'] ?? '')));
     $mobile     = trim((string)($_POST['mobile'] ?? ''));
     $size       = trim((string)($_POST['tshirt_size'] ?? ''));
@@ -98,11 +99,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $form && (int)$form['is_open']) {
     $student = null;
     if (empty($errors)) {
         $student = db_one(
-            "SELECT id, full_name FROM students WHERE enrollment_no = ?",
-            [$enrollment], 's'
+            "SELECT id, full_name, mobile FROM students
+              WHERE enrollment_no = ? AND department_id = ?",
+            [$enrollment, (int)$form['department_id']], 'si'
         );
         if (!$student) {
-            $errors[] = 'No student found with this enrollment number.';
+            $errors[] = 'The enrollment number or mobile number does not match this team.';
+        } else {
+            $storedMobile = preg_replace('/\D+/', '', (string)$student['mobile']);
+            $storedMobile = substr($storedMobile, -10);
+            if ($storedMobile === '' || !hash_equals($storedMobile, $mobile)) {
+                $errors[] = 'The enrollment number or mobile number does not match this team.';
+            }
         }
     }
 
@@ -110,7 +118,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $form && (int)$form['is_open']) {
     if (empty($errors) && $student) {
         $on_team = db_one(
             "SELECT id FROM final_teams
-              WHERE game_name = ? AND event_label = ? AND academic_year <=> ?
+              WHERE game_name = ? AND event_label = ? AND COALESCE(academic_year, '') = ?
                 AND student_id = ?",
             [$form['game_name'], $form['event_label'], $form['academic_year'], (int)$student['id']],
             'sssi'
@@ -153,24 +161,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $form && (int)$form['is_open']) {
 
     // Insert
     if (empty($errors) && $student) {
-        db_insert(
-            "INSERT INTO jersey_requests
+        try {
+            db_insert(
+                "INSERT INTO jersey_requests
                 (jersey_form_id, student_id, enrollment_no, mobile, tshirt_size,
                  jersey_name, preferred_number)
-             VALUES (?, ?, ?, ?, ?, ?, ?)",
-            [
-                (int)$form['id'],
-                (int)$student['id'],
-                $enrollment,
-                $mobile,
-                $size,
-                $jname,
-                $jnum,
-            ],
-            'iissssi'
-        );
-        $success_msg = 'Your jersey request has been submitted successfully! Your faculty will review it shortly.';
-        $old = []; // Clear form on success
+                 VALUES (?, ?, ?, ?, ?, ?, ?)",
+                [
+                    (int)$form['id'],
+                    (int)$student['id'],
+                    $enrollment,
+                    $mobile,
+                    $size,
+                    $jname,
+                    $jnum,
+                ],
+                'iissssi'
+            );
+            $success_msg = 'Your jersey request has been submitted successfully! Your faculty will review it shortly.';
+            $old = [];
+        } catch (Throwable $e) {
+            $errors[] = 'This request could not be saved. You may already have submitted it.';
+        }
     }
 }
 
@@ -516,6 +528,7 @@ $college = db_one('SELECT * FROM college_settings WHERE id = 1') ?? [
                 <?php endif; ?>
 
                 <form method="post" action="jersey-form.php?token=<?= h($token) ?>" id="jerseyForm">
+                    <?= csrf_field() ?>
                     <div class="form-group">
                         <label for="enrollment_no">Enrollment Number <span class="required">*</span></label>
                         <input type="text" id="enrollment_no" name="enrollment_no"

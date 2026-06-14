@@ -19,7 +19,8 @@ if ($me === null) {
 [$scope, $params, $types] = scope_sql_department('s');
 
 $teams = db_select(
-    "SELECT ft.game_name, ft.event_label, ft.academic_year,
+    "SELECT ft.game_name, ft.event_label, COALESCE(ft.academic_year, '') AS academic_year,
+            s.department_id, d.name AS department_name,
             COUNT(DISTINCT ft.student_id) AS player_count,
             jf.id AS form_id,
             COALESCE(jf.is_open, 0) AS is_open,
@@ -30,15 +31,18 @@ $teams = db_select(
             MAX(ft.created_at) AS last_added
        FROM final_teams ft
        JOIN students s ON s.id = ft.student_id
+       JOIN departments d ON d.id = s.department_id
        LEFT JOIN jersey_forms jf
-         ON jf.game_name = ft.game_name
+         ON jf.department_id = s.department_id
+        AND jf.game_name = ft.game_name
         AND jf.event_label = ft.event_label
-        AND jf.academic_year <=> ft.academic_year
+        AND jf.academic_year = COALESCE(ft.academic_year, '')
        LEFT JOIN jersey_requests jr
          ON jr.jersey_form_id = jf.id
         AND jr.student_id = s.id
       WHERE 1=1 $scope
-      GROUP BY ft.game_name, ft.event_label, ft.academic_year, jf.id, jf.is_open
+      GROUP BY ft.game_name, ft.event_label, COALESCE(ft.academic_year, ''),
+               s.department_id, d.name, jf.id, jf.is_open
       ORDER BY last_added DESC, ft.game_name, ft.event_label",
     $params,
     $types
@@ -154,6 +158,7 @@ foreach ($teams as $team) {
                 <div class="sidebar-nav-label">Site Content</div>
                 <a href="notices_list.php"><i class="bi bi-megaphone"></i> <span>Notices</span></a>
                 <a href="achievements_list.php"><i class="bi bi-trophy"></i> <span>Achievements</span></a>
+                <a href="contact_messages.php"><i class="bi bi-envelope"></i> <span>Contact Messages</span></a>
                 <div class="sidebar-nav-label">Admin</div>
                 <a href="faculty_manage.php"><i class="bi bi-people-fill"></i> <span>Faculty Management</span></a>
             <?php endif; ?>
@@ -231,13 +236,14 @@ foreach ($teams as $team) {
                                     'game' => $team['game_name'],
                                     'event' => $team['event_label'],
                                     'ay' => $team['academic_year'] ?? '',
+                                    'dept' => $team['department_id'],
                                 ], static fn($value) => $value !== null && $value !== ''));
                                 ?>
                                 <tr>
                                     <td>
                                         <div class="team-name"><?= h($team['game_name']) ?></div>
                                         <div class="team-meta">
-                                            <?= h($team['event_label']) ?>
+                                            <?= h($team['department_name']) ?> &middot; <?= h($team['event_label']) ?>
                                             <?= !empty($team['academic_year']) ? ' · ' . h($team['academic_year']) : '' ?>
                                         </div>
                                     </td>

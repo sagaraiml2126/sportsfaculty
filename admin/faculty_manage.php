@@ -34,6 +34,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             flash_set('faculty_error', 'All fields required; password must be 8+ characters.', 'error');
             redirect('faculty_manage.php?action=new');
         }
+        if (!preg_match('/^[a-z0-9_]{3,64}$/', $username)) {
+            flash_set('faculty_error', 'Username must be 3-64 lowercase letters, digits, or underscores.', 'error');
+            redirect('faculty_manage.php?action=new');
+        }
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            flash_set('faculty_error', 'Please enter a valid email address.', 'error');
+            redirect('faculty_manage.php?action=new');
+        }
         $hash = password_hash($password, PASSWORD_BCRYPT, ['cost' => 12]);
         try {
             db_insert(
@@ -62,6 +70,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             flash_set('faculty_error', 'Name and email are required.', 'error');
             redirect("faculty_manage.php?action=edit&id=$id");
         }
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            flash_set('faculty_error', 'Please enter a valid email address.', 'error');
+            redirect("faculty_manage.php?action=edit&id=$id");
+        }
+        if ($new_pw !== '' && strlen($new_pw) < 8) {
+            flash_set('faculty_error', 'Password must be 8+ characters.', 'error');
+            redirect("faculty_manage.php?action=edit&id=$id");
+        }
 
         // Don't let the only super-admin demote themselves
         if ($id === (int)$me['id'] && $role !== 'SUPER_ADMIN') {
@@ -73,18 +89,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             redirect("faculty_manage.php?action=edit&id=$id");
         }
 
-        db_execute(
-            'UPDATE faculty SET full_name=?, email=?, phone=?, is_active=?, role=?, must_reset_pw=? WHERE id=?',
-            [$full_name, $email, $phone ?: null, $is_active, $role, $new_pw !== '' ? 1 : 0, $id],
-            'sssiiii'
-        );
-        if ($new_pw !== '') {
-            if (strlen($new_pw) < 8) {
-                flash_set('faculty_error', 'Password must be 8+ characters.', 'error');
-                redirect("faculty_manage.php?action=edit&id=$id");
+        try {
+            db_execute(
+                'UPDATE faculty SET full_name=?, email=?, phone=?, is_active=?, role=?, must_reset_pw=? WHERE id=?',
+                [$full_name, $email, $phone ?: null, $is_active, $role, $new_pw !== '' ? 1 : 0, $id],
+                'sssiiii'
+            );
+            if ($new_pw !== '') {
+                $hash = password_hash($new_pw, PASSWORD_BCRYPT, ['cost' => 12]);
+                db_execute('UPDATE faculty SET password_hash=? WHERE id=?', [$hash, $id], 'si');
             }
-            $hash = password_hash($new_pw, PASSWORD_BCRYPT, ['cost' => 12]);
-            db_execute('UPDATE faculty SET password_hash=? WHERE id=?', [$hash, $id], 'si');
+        } catch (Throwable $e) {
+            flash_set('faculty_error', 'That email address is already assigned to another account.', 'error');
+            redirect("faculty_manage.php?action=edit&id=$id");
         }
         flash_set('faculty_saved', 'Faculty updated.', 'success');
         redirect('faculty_manage.php');
@@ -212,6 +229,7 @@ if ($action === 'edit' && $id > 0) {
                 <div class="sidebar-nav-label">Site Content</div>
                 <a href="notices_list.php"><i class="bi bi-megaphone"></i> <span>Notices</span></a>
                 <a href="achievements_list.php"><i class="bi bi-trophy"></i> <span>Achievements</span></a>
+                <a href="contact_messages.php"><i class="bi bi-envelope"></i> <span>Contact Messages</span></a>
                 <div class="sidebar-nav-label">Admin</div>
                 <a href="faculty_manage.php" class="active"><i class="bi bi-people-fill"></i> <span>Faculty Management</span></a>
                 <div class="sidebar-nav-label">Site</div>
